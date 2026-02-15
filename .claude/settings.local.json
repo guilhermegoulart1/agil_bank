@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:openai.github.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.awesomeapi.com.br)",
+      "WebFetch(domain:docs.railway.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm create:*)",
+      "Bash(npm run build:*)",
+      "Bash(ls:*)",
+      "Bash(npx vite build)"
+    ]
+  }
+}
