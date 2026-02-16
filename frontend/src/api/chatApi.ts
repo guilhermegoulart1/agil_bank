@@ -7,6 +7,19 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 console.log('[CONFIG] VITE_API_URL:', import.meta.env.VITE_API_URL || 'NOT SET (usando /api)');
 console.log('[CONFIG] API_BASE:', API_BASE);
 
+// Token de autenticacao (gerenciado via setAuthToken)
+let _authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (_authToken) headers['Authorization'] = `Bearer ${_authToken}`;
+  return headers;
+}
+
 // Envia uma mensagem para o backend e retorna a resposta do agente
 // agentId define qual agente usar (null/undefined = triage padrao)
 // provider define qual provider usar (null/undefined = provider padrao do backend)
@@ -23,11 +36,17 @@ export async function enviarMensagem(
 
   const resposta = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ message, sessionId, agentId, provider, model }),
   });
 
   console.log('[CHAT] Resposta:', resposta.status, resposta.statusText);
+
+  if (resposta.status === 401) {
+    sessionStorage.removeItem('bancoagil_token');
+    window.location.reload();
+    throw new Error('Sessao expirada. Redirecionando para login...');
+  }
 
   if (!resposta.ok) {
     const errorText = await resposta.text().catch(() => '');

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getAuthHeaders } from '../../api/chatApi.js';
 import './ProviderSelector.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -55,7 +56,7 @@ export function ProviderSelector({
 
   async function fetchProviders() {
     try {
-      const response = await fetch(`${API_BASE}/providers`);
+      const response = await fetch(`${API_BASE}/providers`, { headers: getAuthHeaders() });
       const data = await response.json();
       setProviderInfo(data);
 

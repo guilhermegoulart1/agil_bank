@@ -9,9 +9,10 @@ interface SidebarProps {
   onNewChat: () => void;
   currentView: ViewType;
   onViewChange: (view: ViewType) => void;
+  onLogout: () => void;
 }
 
-export function Sidebar({ agentModes, selectedAgentId, onSelectAgent, onNewChat, currentView, onViewChange }: SidebarProps) {
+export function Sidebar({ agentModes, selectedAgentId, onSelectAgent, onNewChat, currentView, onViewChange, onLogout }: SidebarProps) {
   return (
     <aside className="sidebar">
       {/* Branding */}
@@ -71,6 +72,12 @@ export function Sidebar({ agentModes, selectedAgentId, onSelectAgent, onNewChat,
           </ul>
         </>
       )}
+
+      <div className="sidebar-footer">
+        <button className="btn-logout" onClick={onLogout}>
+          Sair
+        </button>
+      </div>
     </aside>
   );
 }

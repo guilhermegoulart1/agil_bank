@@ -3,7 +3,9 @@ import cors from 'cors';
 import { setDefaultOpenAIKey } from '@openai/agents';
 import { config } from './config/env.js';
 import { chatRouter } from './routes/chatRoutes.js';
+import { authRouter } from './routes/authRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { requireAuth } from './middleware/authMiddleware.js';
 
 // Captura erros nao tratados que podem matar o processo
 process.on('uncaughtException', (err) => {
@@ -17,6 +19,7 @@ process.on('SIGTERM', () => {
 });
 
 const app = express();
+app.set('trust proxy', 1);
 
 // === STARTUP LOGS ===
 console.log('[STARTUP] Iniciando servidor...');
@@ -77,7 +80,13 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Rotas do chat
+// Rotas de autenticacao (publicas)
+app.use('/api', authRouter);
+
+// Middleware de autenticacao (protege tudo abaixo)
+app.use('/api', requireAuth);
+
+// Rotas do chat (protegidas)
 app.use('/api', chatRouter);
 
 // Tratamento global de erros
