@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CsvTable } from './CsvTable.js';
+import { getAuthHeaders } from '../../api/chatApi.js';
 import type { CsvData } from '../../types/index.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -43,7 +44,9 @@ export function CsvViewer() {
 
     setLoading((prev) => ({ ...prev, [filename]: true }));
     try {
-      const response = await fetch(`${API_BASE}/csv/${filename}`);
+      const response = await fetch(`${API_BASE}/csv/${filename}`, {
+        headers: getAuthHeaders(),
+      });
       if (!response.ok) throw new Error('Erro ao carregar CSV');
 
       const csvText = await response.text();
