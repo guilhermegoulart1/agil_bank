@@ -7,6 +7,14 @@
   overflow: hidden;
 }
 
+/* ===== Provider Selector Container ===== */
+
+.provider-selector-container {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-secondary);
+}
+
 /* ===== Sidebar ===== */
 
 .sidebar {

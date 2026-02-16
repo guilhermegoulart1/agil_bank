@@ -1,10 +1,18 @@
 // Rota principal do chat - processa mensagens do usuario e retorna respostas dos agentes
+// Agora com suporte multi-provider
 
 import { Router } from 'express';
-import { run, type AgentInputItem } from '@openai/agents';
 import { sessionManager } from '../sessions/sessionManager.js';
-import { triageAgent, agentMap } from '../agents/index.js';
 import type { BankingContext } from '../agents/context.js';
+import type { ProviderType } from '../providers/types.js';
+import { config } from '../config/env.js';
+import { ProviderFactory } from '../providers/ProviderFactory.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { readFile } from 'fs/promises';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export const chatRouter = Router();
 
@@ -18,36 +26,15 @@ const CONTEXTO_DEMO: Partial<BankingContext> = {
   currentLimit: 5000,
 };
 
-// Tipo para itens de log detalhados retornados ao frontend
-interface LogItem {
-  type: 'message' | 'tool_call' | 'tool_output' | 'handoff';
-  agent?: string;
-  content?: string;
-  toolName?: string;
-  input?: string;
-  output?: string;
-  sourceAgent?: string;
-  targetAgent?: string;
-}
-
-interface LogData {
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalRequests: number;
-  totalTokens: number;
-  durationMs: number;
-  currentAgent: string;
-  contextSnapshot: Partial<BankingContext>;
-  items: LogItem[];
-}
-
 // POST /api/chat - Envia mensagem e recebe resposta do agente
 chatRouter.post('/chat', async (req, res, next) => {
   try {
-    const { sessionId, message, agentId } = req.body as {
+    const { sessionId, message, agentId, provider, model } = req.body as {
       sessionId?: string;
       message: string;
       agentId?: string;
+      provider?: ProviderType;
+      model?: string;
     };
 
     if (!message || typeof message !== 'string') {
@@ -55,23 +42,30 @@ chatRouter.post('/chat', async (req, res, next) => {
       return;
     }
 
+    // Validate provider selection
+    if (provider && !config.allowProviderSelection) {
+      res.status(403).json({ error: 'Seleção de provider não habilitada.' });
+      return;
+    }
+
     // Recupera ou cria uma nova sessao
-    let session = sessionId
-      ? sessionManager.getSession(sessionId)
-      : undefined;
+    let session = sessionId ? sessionManager.getSession(sessionId) : undefined;
 
     if (!session) {
       // Determina qual agente iniciar e se precisa de contexto pre-autenticado
       const agenteId = agentId || 'full';
-      const agente = agentMap[agenteId] || triageAgent;
       // Agentes que iniciam sem pre-autenticacao (triagem precisa autenticar o cliente)
       const agentsSemPreAuth = ['full', 'triage'];
       const contexto = agentsSemPreAuth.includes(agenteId) ? undefined : CONTEXTO_DEMO;
-      session = sessionManager.createSession(agente, contexto);
+
+      session = await sessionManager.createSession(agenteId, contexto, provider, model);
     }
 
+    // Update last activity
+    session.lastActivity = new Date();
+
     // Bloqueia mensagens se a conversa ja foi encerrada
-    if (session.context.conversationEnded) {
+    if (session.providerSession.context.conversationEnded) {
       res.json({
         sessionId: session.id,
         messages: ['Este atendimento foi encerrado. Por favor, inicie um novo chat para continuar.'],
@@ -81,119 +75,113 @@ chatRouter.post('/chat', async (req, res, next) => {
           totalRequests: 0,
           totalTokens: 0,
           durationMs: 0,
-          currentAgent: session.currentAgent.name,
+          currentAgent: 'sistema',
           contextSnapshot: {
             conversationEnded: true,
           },
           items: [],
+          provider: session.provider.getProviderName(),
         },
       });
       return;
     }
 
-    // Adiciona a mensagem do usuario ao historico
-    session.inputItems.push({
-      role: 'user',
-      content: message,
-    } as AgentInputItem);
+    // Execute message with provider
+    const result = await session.provider.executeMessage(
+      session.providerSession,
+      message
+    );
 
-    // Mede o tempo de execucao do loop do agente
-    const inicio = Date.now();
-
-    // Executa o loop do agente
-    const result = await run(session.currentAgent, session.inputItems, {
-      context: session.context,
-      maxTurns: 15,
-    });
-
-    const durationMs = Date.now() - inicio;
-
-    // Extrai as mensagens de texto do agente e monta os itens de log detalhados
-    const mensagensAgente: string[] = [];
-    const logItems: LogItem[] = [];
-
-    for (const item of result.newItems) {
-      switch (item.type) {
-        case 'message_output_item': {
-          // Mensagem textual do agente
-          const conteudo = (item as any).content as string;
-          if (conteudo) {
-            mensagensAgente.push(conteudo);
-            logItems.push({
-              type: 'message',
-              agent: (item as any).agent?.name || 'desconhecido',
-              content: conteudo,
-            });
-          }
-          break;
-        }
-        case 'tool_call_item': {
-          // Chamada de ferramenta (tool call)
-          const rawItem = (item as any).rawItem;
-          logItems.push({
-            type: 'tool_call',
-            agent: (item as any).agent?.name || 'desconhecido',
-            toolName: rawItem?.name || 'desconhecido',
-            input: rawItem?.arguments || '{}',
-          });
-          break;
-        }
-        case 'tool_call_output_item': {
-          // Resultado de ferramenta
-          const output = (item as any).output;
-          logItems.push({
-            type: 'tool_output',
-            agent: (item as any).agent?.name || 'desconhecido',
-            output: typeof output === 'string' ? output : JSON.stringify(output),
-          });
-          break;
-        }
-        case 'handoff_output_item': {
-          // Transferencia entre agentes (handoff)
-          logItems.push({
-            type: 'handoff',
-            sourceAgent: (item as any).sourceAgent?.name || 'desconhecido',
-            targetAgent: (item as any).targetAgent?.name || 'desconhecido',
-          });
-          break;
-        }
-      }
-    }
-
-    // Extrai dados de uso de tokens do SDK
-    const usage = result.state.usage;
-    const logs: LogData = {
-      totalInputTokens: usage?.inputTokens ?? 0,
-      totalOutputTokens: usage?.outputTokens ?? 0,
-      totalRequests: usage?.requests ?? 0,
-      totalTokens: usage?.totalTokens ?? 0,
-      durationMs,
-      currentAgent: result.lastAgent?.name || 'desconhecido',
-      contextSnapshot: {
-        authenticated: session.context.authenticated,
-        cpf: session.context.cpf,
-        customerName: session.context.customerName,
-        currentScore: session.context.currentScore,
-        currentLimit: session.context.currentLimit,
-      },
-      items: logItems,
-    };
-
-    // Atualiza o historico da sessao com o historico completo do resultado
-    session.inputItems = result.history;
-
-    // Atualiza o agente ativo (pode ter mudado por handoff)
-    if (result.lastAgent) {
-      session.currentAgent = result.lastAgent as any;
-    }
-
+    // Return response
     res.json({
       sessionId: session.id,
-      messages: mensagensAgente,
-      logs,
+      messages: result.messages,
+      logs: {
+        totalInputTokens: result.usage.inputTokens,
+        totalOutputTokens: result.usage.outputTokens,
+        totalRequests: result.usage.requests,
+        totalTokens: result.usage.totalTokens,
+        durationMs: result.durationMs,
+        currentAgent: result.lastAgent || session.providerSession.agentId,
+        contextSnapshot: {
+          authenticated: session.providerSession.context.authenticated,
+          cpf: session.providerSession.context.cpf,
+          customerName: session.providerSession.context.customerName,
+          currentScore: session.providerSession.context.currentScore,
+          currentLimit: session.providerSession.context.currentLimit,
+        },
+        items: result.logs,
+        provider: session.provider.getProviderName(),
+        providerInfo: session.provider.getProviderInfo(),
+      },
     });
   } catch (erro: any) {
     console.error('[Chat] Erro ao processar mensagem:', erro);
     next(erro);
+  }
+});
+
+// GET /api/providers - List available providers
+chatRouter.get('/providers', async (_req, res) => {
+  const providers: ProviderType[] = [];
+
+  // Check which providers have API keys configured
+  if (config.provider.openaiApiKey) providers.push('openai-agents');
+  if (config.provider.googleApiKey) providers.push('google-adk');
+  if (config.provider.openrouterApiKey) providers.push('openrouter');
+
+  res.json({
+    current: config.provider.default,
+    available: providers,
+    selectionEnabled: config.allowProviderSelection,
+    info: {
+      'openai-agents': {
+        framework: '@openai/agents',
+        model: 'gpt-4o-mini',
+        cost: '$$',
+        handoffs: 'Native',
+      },
+      'google-adk': {
+        framework: '@google/genkit',
+        model: 'gemini-2.0-flash',
+        cost: 'FREE',
+        handoffs: 'Native',
+      },
+      'openrouter': {
+        framework: 'OpenAI SDK',
+        model: 'Multiple (100+ models)',
+        cost: '$ - $$$',
+        handoffs: 'Manual',
+      },
+    },
+  });
+});
+
+// GET /api/csv/:filename - Serve arquivos CSV permitidos para homologacao
+chatRouter.get('/csv/:filename', async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+
+    // Whitelist de arquivos permitidos (seguranca)
+    const allowedFiles = ['clientes', 'score_limite', 'solicitacoes_aumento_limite'];
+
+    if (!allowedFiles.includes(filename)) {
+      res.status(404).json({ error: 'Arquivo nao encontrado' });
+      return;
+    }
+
+    // Ler arquivo CSV diretamente
+    const filePath = join(__dirname, '../../data', `${filename}.csv`);
+    const content = await readFile(filePath, 'utf-8');
+
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.send(content);
+  } catch (error: any) {
+    console.error('[CSV] Erro ao servir arquivo:', error);
+    if (error.code === 'ENOENT') {
+      res.status(404).json({ error: 'Arquivo nao encontrado' });
+    } else {
+      next(error);
+    }
   }
 });

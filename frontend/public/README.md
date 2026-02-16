@@ -255,13 +255,17 @@ npm run dev
 
 ### Dados para Teste
 
-| CPF | Nome | Data Nascimento | Score | Limite |
-|-----|------|----------------|-------|--------|
+Use os CPFs e datas abaixo para testar o sistema:
+
+| CPF | Nome | Data Nascimento | Score | Limite Atual |
+|-------------|----------------|-----------------|-------|--------------|
 | 12345678901 | Joao Silva | 15/03/1985 | 720 | R$ 5.000 |
 | 98765432100 | Maria Oliveira | 22/07/1990 | 450 | R$ 2.000 |
 | 11122233344 | Carlos Santos | 10/12/1978 | 850 | R$ 15.000 |
 | 55566677788 | Ana Costa | 05/01/1995 | 300 | R$ 1.000 |
 | 99988877766 | Pedro Almeida | 18/09/1982 | 600 | R$ 3.500 |
+
+**Dica:** Use o CPF `12345678901` com data `15/03/1985` para testes gerais.
 
 ## Cenarios de Teste Completos
 
@@ -271,16 +275,18 @@ Esta secao descreve **passo a passo** como testar cada requisito do desafio tecn
 
 ### Tabela de Limites por Score
 
-Conforme `backend/data/score_limite.csv`:
+Esta tabela define o limite máximo permitido baseado no score de crédito do cliente:
 
-| Score Minimo | Score Maximo | Limite Maximo Permitido |
-|--------------|--------------|------------------------|
-| 0 | 299 | R$ 1.000 |
-| 300 | 499 | R$ 3.000 |
-| 500 | 699 | R$ 5.000 |
-| 700 | 799 | R$ 10.000 |
-| 800 | 899 | R$ 20.000 |
-| 900 | 1000 | R$ 50.000 |
+| Faixa de Score | Limite Máximo Permitido |
+|----------------|-------------------------|
+| 0 - 299 | R$ 1.000 |
+| 300 - 499 | R$ 3.000 |
+| 500 - 699 | R$ 5.000 |
+| 700 - 799 | R$ 10.000 |
+| 800 - 899 | R$ 20.000 |
+| 900 - 1000 | R$ 50.000 |
+
+**Exemplo:** Um cliente com score 720 pode ter até R$ 10.000 de limite.
 
 ---
 

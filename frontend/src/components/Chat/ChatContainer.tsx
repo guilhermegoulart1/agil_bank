@@ -11,6 +11,8 @@ import type { AgentMode, LogData } from '../../types/index.js';
 interface ChatContainerProps {
   agentId: string;
   agentMode: AgentMode;
+  provider?: string;
+  model?: string;
   onToggleLogs: () => void;
   logPanelOpen: boolean;
   onLogsUpdate: (logs: LogData[]) => void;
@@ -19,11 +21,13 @@ interface ChatContainerProps {
 export function ChatContainer({
   agentId,
   agentMode,
+  provider,
+  model,
   onToggleLogs,
   logPanelOpen,
   onLogsUpdate,
 }: ChatContainerProps) {
-  const { messages, isLoading, logs, enviar } = useChat(agentId);
+  const { messages, isLoading, logs, enviar } = useChat(agentId, provider, model);
 
   // Reporta mudancas de logs ao componente pai (App)
   useEffect(() => {

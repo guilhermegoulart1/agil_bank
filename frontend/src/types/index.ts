@@ -62,3 +62,23 @@ export interface AgentMode {
   description: string;
   instructions: string[];
 }
+
+// Dados de CSV parseados
+export interface CsvData {
+  headers: string[];
+  rows: string[][];
+}
+
+// Estado do visualizador CSV
+export interface CsvViewerState {
+  activeTab: 'clientes' | 'score_limite' | 'solicitacoes';
+  data: Record<string, CsvData | null>;
+  loading: Record<string, boolean>;
+  errors: Record<string, string | null>;
+}
+
+// Tipo de view ativa no painel central
+export type ViewType = 'chat' | 'documentation';
+
+// Tipo de tab na documentação
+export type DocumentationTab = 'readme' | 'csv';

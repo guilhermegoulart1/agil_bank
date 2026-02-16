@@ -4,22 +4,39 @@ import { useState, useCallback } from 'react';
 import { ChatContainer } from './components/Chat/ChatContainer.js';
 import { Sidebar } from './components/Sidebar/Sidebar.js';
 import { LogPanel } from './components/LogPanel/LogPanel.js';
+import { DocumentationView } from './components/Documentation/DocumentationView.js';
+import { ProviderSelector } from './components/ProviderSelector/ProviderSelector.js';
 import { agentModes } from './config/agentModes.js';
-import type { LogData } from './types/index.js';
+import type { LogData, ViewType } from './types/index.js';
 import './styles/globals.css';
 import './styles/layout.css';
 
 function App() {
   const [selectedAgentId, setSelectedAgentId] = useState('full');
+  const [selectedProvider, setSelectedProvider] = useState('openai-agents');
+  const [selectedModel, setSelectedModel] = useState('openai/gpt-4o-mini');
   const [logPanelOpen, setLogPanelOpen] = useState(false);
   const [logs, setLogs] = useState<LogData[]>([]);
-  // Key para forcar remount do ChatContainer quando muda o agente
+  const [currentView, setCurrentView] = useState<ViewType>('chat');
+  // Key para forcar remount do ChatContainer quando muda o agente ou provider
   const [chatKey, setChatKey] = useState(0);
 
   const handleSelectAgent = useCallback((agentId: string) => {
     setSelectedAgentId(agentId);
     setLogs([]);
     setChatKey((prev) => prev + 1); // Forca novo chat ao trocar agente
+  }, []);
+
+  const handleProviderChange = useCallback((provider: string) => {
+    setSelectedProvider(provider);
+    setLogs([]);
+    setChatKey((prev) => prev + 1); // Forca novo chat ao trocar provider
+  }, []);
+
+  const handleModelChange = useCallback((model: string) => {
+    setSelectedModel(model);
+    setLogs([]);
+    setChatKey((prev) => prev + 1); // Forca novo chat ao trocar modelo
   }, []);
 
   const handleNewChat = useCallback(() => {
@@ -49,16 +66,35 @@ function App() {
         selectedAgentId={selectedAgentId}
         onSelectAgent={handleSelectAgent}
         onNewChat={handleNewChat}
+        currentView={currentView}
+        onViewChange={setCurrentView}
       />
       <div className="chat-panel">
-        <ChatContainer
-          key={chatKey}
-          agentId={selectedAgentId}
-          agentMode={selectedMode}
-          onToggleLogs={handleToggleLogs}
-          logPanelOpen={logPanelOpen}
-          onLogsUpdate={handleLogsUpdate}
-        />
+        {/* Provider Selector */}
+        <div className="provider-selector-container">
+          <ProviderSelector
+            selectedProvider={selectedProvider}
+            onProviderChange={handleProviderChange}
+            selectedModel={selectedModel}
+            onModelChange={handleModelChange}
+            disabled={logs.length > 0}
+          />
+        </div>
+
+        {currentView === 'chat' ? (
+          <ChatContainer
+            key={`${chatKey}-${selectedProvider}-${selectedModel}`}
+            agentId={selectedAgentId}
+            agentMode={selectedMode}
+            provider={selectedProvider}
+            model={selectedModel}
+            onToggleLogs={handleToggleLogs}
+            logPanelOpen={logPanelOpen}
+            onLogsUpdate={handleLogsUpdate}
+          />
+        ) : (
+          <DocumentationView />
+        )}
       </div>
       <LogPanel
         logs={logs}

@@ -1,18 +1,17 @@
 // Sidebar com selecao de agente e botao de novo chat
 
-import { useState } from 'react';
-import type { AgentMode } from '../../types/index.js';
-import { DocumentationModal } from '../Layout/DocumentationModal.js';
+import type { AgentMode, ViewType } from '../../types/index.js';
 
 interface SidebarProps {
   agentModes: AgentMode[];
   selectedAgentId: string;
   onSelectAgent: (agentId: string) => void;
   onNewChat: () => void;
+  currentView: ViewType;
+  onViewChange: (view: ViewType) => void;
 }
 
-export function Sidebar({ agentModes, selectedAgentId, onSelectAgent, onNewChat }: SidebarProps) {
-  const [showDocModal, setShowDocModal] = useState(false);
+export function Sidebar({ agentModes, selectedAgentId, onSelectAgent, onNewChat, currentView, onViewChange }: SidebarProps) {
   return (
     <aside className="sidebar">
       {/* Branding */}
@@ -24,56 +23,54 @@ export function Sidebar({ agentModes, selectedAgentId, onSelectAgent, onNewChat 
             <div className="sidebar-subtitle">Atendimento IA</div>
           </div>
         </div>
-        <button className="btn-new-chat" onClick={onNewChat}>
-          + Novo Chat
+        {currentView === 'chat' && (
+          <button className="btn-new-chat" onClick={onNewChat}>
+            + Novo Chat
+          </button>
+        )}
+      </div>
+
+      {/* Navegação Principal */}
+      <div className="sidebar-navigation">
+        <button
+          className={`nav-button ${currentView === 'chat' ? 'active' : ''}`}
+          onClick={() => onViewChange('chat')}
+        >
+          💬 Chat
+        </button>
+        <button
+          className={`nav-button ${currentView === 'documentation' ? 'active' : ''}`}
+          onClick={() => onViewChange('documentation')}
+        >
+          📚 Documentação
         </button>
       </div>
 
-      {/* Lista de agentes */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-title">Agentes</div>
-      </div>
-      <ul className="sidebar-agents">
-        {agentModes.map((mode) => (
-          <li
-            key={mode.id}
-            className={`sidebar-agent-item ${selectedAgentId === mode.id ? 'active' : ''}`}
-            onClick={() => onSelectAgent(mode.id)}
-          >
-            <span className="agent-icon">{mode.icon}</span>
-            <div className="agent-info">
-              <div className="agent-name">{mode.label}</div>
-              <div className="agent-desc">{mode.description}</div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="sidebar-divider"></div>
 
-      {/* Divisor */}
-      <div className="sidebar-divider" />
-
-      {/* Documentacao */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-title">Recursos</div>
-      </div>
-      <div className="sidebar-docs">
-        <div
-          className="sidebar-doc-item"
-          onClick={() => setShowDocModal(true)}
-        >
-          <span className="doc-icon">📚</span>
-          <div className="doc-info">
-            <div className="doc-name">Documentação</div>
-            <div className="doc-desc">Guia completo do projeto</div>
+      {/* Lista de agentes (apenas visível em modo chat) */}
+      {currentView === 'chat' && (
+        <>
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">Agentes</div>
           </div>
-        </div>
-      </div>
-
-      {/* Modal de Documentacao */}
-      <DocumentationModal
-        isOpen={showDocModal}
-        onClose={() => setShowDocModal(false)}
-      />
+          <ul className="sidebar-agents">
+            {agentModes.map((mode) => (
+              <li
+                key={mode.id}
+                className={`sidebar-agent-item ${selectedAgentId === mode.id ? 'active' : ''}`}
+                onClick={() => onSelectAgent(mode.id)}
+              >
+                <span className="agent-icon">{mode.icon}</span>
+                <div className="agent-info">
+                  <div className="agent-name">{mode.label}</div>
+                  <div className="agent-desc">{mode.description}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </aside>
   );
 }

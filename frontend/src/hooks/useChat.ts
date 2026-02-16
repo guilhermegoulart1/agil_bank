@@ -10,7 +10,7 @@ function gerarId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-export function useChat(agentId?: string) {
+export function useChat(agentId?: string, provider?: string, model?: string) {
   const [state, setState] = useState<ChatState>({
     messages: [],
     sessionId: null,
@@ -38,7 +38,7 @@ export function useChat(agentId?: string) {
     }));
 
     try {
-      const resposta = await enviarMensagem(conteudo, sessionIdRef.current, agentId);
+      const resposta = await enviarMensagem(conteudo, sessionIdRef.current, agentId, provider, model);
       sessionIdRef.current = resposta.sessionId;
 
       // Converte as respostas do agente em mensagens da interface
@@ -79,7 +79,7 @@ export function useChat(agentId?: string) {
         isLoading: false,
       }));
     }
-  }, [state.isLoading, agentId]);
+  }, [state.isLoading, agentId, provider, model]);
 
   // Reinicia o chat (nova sessao, limpa logs)
   const reiniciar = useCallback(() => {

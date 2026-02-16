@@ -43,8 +43,8 @@ O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colab
 | Camada | Tecnologia |
 |--------|-----------|
 | Backend | Node.js + TypeScript + Express |
-| Agentes IA | OpenAI Agents SDK (`@openai/agents`) |
-| Modelo LLM | GPT-4o-mini |
+| Agentes IA | **Multi-provider** (OpenAI Agents, OpenRouter, Google Gemini) |
+| Modelo LLM | GPT-4o-mini, Gemini 2.0 Flash, ou 100+ modelos via OpenRouter |
 | Frontend | React + TypeScript + Vite |
 | API de Cambio | AwesomeAPI (gratuita, sem chave) |
 | Dados | CSV com file locking (`proper-lockfile`) |
@@ -105,21 +105,191 @@ O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colab
 - Suporta: USD, EUR, GBP, ARS, CAD, AUD, JPY, CNY, BTC
 - Apresenta valores de compra, venda e variacao
 
+### Sistema Multi-Provider
+
+O sistema suporta **3 providers de IA diferentes**, permitindo flexibilidade, comparação de performance e otimização de custos:
+
+#### Providers Implementados
+
+1. **OpenAI Agents SDK** (baseline)
+   - Framework oficial da OpenAI com handoffs nativos
+   - Modelo: `gpt-4o-mini`
+   - Orquestração automática via SDK
+
+2. **Google Gemini** (gratuito!)
+   - SDK: `@google/generative-ai`
+   - Modelo: `gemini-2.0-flash-exp`
+   - Orquestração manual
+   - **API gratuita** com limites generosos
+
+3. **OpenRouter** (máxima flexibilidade)
+   - Acesso a **100+ modelos** (GPT, Claude, Llama, Mistral, etc.)
+   - Orquestração manual via OpenAI SDK
+   - Escolha de modelo customizável
+   - Otimização de custo por tarefa
+
+#### Tabela Comparativa dos Providers
+
+| Aspecto | OpenAI Agents | Google Gemini | OpenRouter |
+|---------|---------------|---------------|------------|
+| **Framework** | `@openai/agents` v0.4.6 | `@google/generative-ai` | OpenAI SDK + OpenRouter API |
+| **Handoffs** | ✅ Nativos (SDK) | ⚠️ Manual (orquestrado) | ⚠️ Manual (orquestrado) |
+| **Modelo(s)** | gpt-4o-mini | gemini-2.0-flash-exp | 100+ modelos disponíveis |
+| **Custo** | $$ (~$0.15/1M tokens) | **GRÁTIS** (até limite) | $ - $$$ (varia por modelo) |
+| **Velocidade** | ⚡ Rápida (~2-3s) | ⚡⚡ Muito rápida (~1-2s) | ⚡ Rápida (varia) |
+| **Complexidade** | 🟢 Baixa (SDK abstrai) | 🟡 Média (orquestração manual) | 🟡 Média (orquestração manual) |
+| **Tool Calling** | ✅ Nativo | ✅ Suportado | ✅ Nativo (OpenAI format) |
+| **Contexto** | Compartilhado (referência) | Mantido manualmente | Mantido manualmente |
+| **Rate Limits** | Médios (tier-based) | Generosos (free tier) | Altos (pagos) |
+| **Setup** | Chave OpenAI | Chave Google (gratuita) | Chave OpenRouter |
+
+#### Prós e Contras de Cada Provider
+
+**OpenAI Agents SDK**
+- ✅ **Prós:**
+  - Handoffs nativos e automáticos
+  - Documentação oficial excelente
+  - Contexto compartilhado por referência
+  - Implementação mais simples
+  - Maturidade e estabilidade
+- ❌ **Contras:**
+  - Custo por token (não gratuito)
+  - Dependência exclusiva do OpenAI
+  - Vendor lock-in
+  - Menos controle sobre orquestração
+
+**Google Gemini**
+- ✅ **Prós:**
+  - **Completamente gratuito** (até rate limits)
+  - Muito rápido (gemini-2.0-flash)
+  - Boa qualidade de respostas
+  - API simples e bem documentada
+  - Alternativa sem custo
+- ❌ **Contras:**
+  - Handoffs devem ser orquestrados manualmente
+  - Menor maturidade que OpenAI
+  - Rate limits no tier gratuito
+  - Tracking de tokens aproximado
+
+**OpenRouter**
+- ✅ **Prós:**
+  - **100+ modelos disponíveis** (GPT, Claude, Llama, Mistral, Qwen, etc.)
+  - Otimização de custo (modelos baratos disponíveis)
+  - Flexibilidade máxima
+  - Comparação entre modelos
+  - Fallback entre providers
+  - Rate limits altos
+- ❌ **Contras:**
+  - Handoffs devem ser orquestrados manualmente
+  - Custo varia muito por modelo
+  - Necessita gerenciamento de créditos
+  - Qualidade varia entre modelos
+
+#### Quando Usar Cada Provider?
+
+| Cenário | Provider Recomendado | Justificativa |
+|---------|---------------------|---------------|
+| **Desenvolvimento e testes** | Google Gemini | Gratuito, rápido, sem custo |
+| **Produção com orçamento** | Google Gemini | Tier gratuito suficiente para volume médio |
+| **Produção enterprise** | OpenAI Agents | Handoffs nativos, estabilidade, suporte |
+| **Comparação de modelos** | OpenRouter | Acesso a múltiplos providers |
+| **Otimização de custo** | OpenRouter | Modelos baratos (ex: Llama 3.1 70B) |
+| **Máxima confiabilidade** | OpenAI Agents | Maturidade e SLA |
+| **Experimentação** | OpenRouter | Testar Claude, Mistral, etc. |
+
+#### Arquitetura Multi-Provider
+
+```
+┌─────────────────────────────────────────────────┐
+│              Frontend (React)                   │
+│  ┌──────────────────────────────────────────┐  │
+│  │      ProviderSelector Component          │  │
+│  │  [OpenAI Agents] [Gemini] [OpenRouter]  │  │
+│  └──────────────────────────────────────────┘  │
+└────────────────────┬────────────────────────────┘
+                     │ POST /api/chat
+                     │ { message, provider }
+                     ▼
+┌─────────────────────────────────────────────────┐
+│          Backend (Express + TypeScript)         │
+│                                                 │
+│  ┌──────────────────────────────────────────┐  │
+│  │        ProviderFactory                   │  │
+│  │     (createProvider based on type)       │  │
+│  └─────┬──────────┬──────────────┬──────────┘  │
+│        │          │              │             │
+│        ▼          ▼              ▼             │
+│  ┌─────────┐ ┌─────────┐ ┌──────────────┐    │
+│  │ OpenAI  │ │ Google  │ │  OpenRouter  │    │
+│  │Adapter  │ │Adapter  │ │   Adapter    │    │
+│  └────┬────┘ └────┬────┘ └──────┬───────┘    │
+│       │           │              │            │
+└───────┼───────────┼──────────────┼────────────┘
+        │           │              │
+        ▼           ▼              ▼
+    ┌────────┐  ┌────────┐  ┌──────────────┐
+    │OpenAI  │  │Google  │  │  OpenRouter  │
+    │  API   │  │Gemini  │  │     API      │
+    │        │  │  API   │  │ (100+ models)│
+    └────────┘  └────────┘  └──────────────┘
+```
+
+#### Padrão Adapter
+
+Todos os providers implementam a interface `ProviderAdapter`:
+
+```typescript
+interface ProviderAdapter {
+  createSession(agentId: string, context?: BankingContext): Promise<ProviderSession>;
+  executeMessage(session: ProviderSession, message: string): Promise<AgentExecutionResult>;
+  getProviderName(): string;
+  getProviderInfo(): { framework: string; model: string };
+}
+```
+
+Isso permite:
+- ✅ **Troca dinâmica** de provider sem quebrar código
+- ✅ **Ferramentas reutilizáveis** entre todos os providers
+- ✅ **Adicionar novos providers** facilmente (ex: Anthropic Claude, LangChain)
+- ✅ **Comparação A/B** entre providers
+- ✅ **Fallback automático** em caso de falha
+
+#### Seleção de Provider
+
+O provider pode ser selecionado de 3 formas:
+
+1. **Via Interface (UI)**: Componente `ProviderSelector` no frontend
+2. **Via Variável de Ambiente**: `PROVIDER_TYPE` no `.env`
+3. **Via Request Body**: Campo `provider` no POST `/api/chat`
+
 ### Fluxo de Dados
 
 ```
 Frontend (React) ──POST /api/chat──▶ Backend (Express)
-                                         │
-                                    OpenAI Agents SDK
-                                    ┌────┴────┐
-                                    │  run()  │
-                                    └────┬────┘
-                                         │
-                              ┌──────────┼──────────┐
-                              ▼          ▼          ▼
-                          Tools      Handoffs    LLM (GPT-4o-mini)
-                          (CSV,       (entre
-                          API)        agentes)
+    │ provider: 'google-adk'              │
+                                     ProviderFactory
+                                    ┌─────┴──────┐
+                                    │ Seleciona  │
+                                    │  Adapter   │
+                                    └─────┬──────┘
+                                          │
+                    ┌─────────────────────┼─────────────────────┐
+                    ▼                     ▼                     ▼
+            OpenAI Adapter         Gemini Adapter       OpenRouter Adapter
+            │ run() SDK            │ Manual Loop        │ Manual Loop
+            └─────┬─────           └──────┬─────        └──────┬─────
+                  │                       │                    │
+                  ▼                       ▼                    ▼
+            GPT-4o-mini            Gemini 2.0 Flash     100+ Models
+                                                        (GPT, Claude, etc)
+                  │                       │                    │
+            ──────┴───────────────────────┴────────────────────┘
+                                    │
+                          ┌─────────┼─────────┐
+                          ▼         ▼         ▼
+                      Tools    Handoffs    Context
+                      (CSV,    (4 agentes) (shared)
+                       API)
 ```
 
 ### Estrutura do Projeto
@@ -128,21 +298,33 @@ Frontend (React) ──POST /api/chat──▶ Backend (Express)
 Desafio/
 ├── backend/
 │   ├── src/
-│   │   ├── agents/        # Definicao dos 4 agentes e handoffs
-│   │   ├── tools/         # Ferramentas dos agentes (CSV, API, calculos)
-│   │   ├── services/      # Servicos de dados (CSV, cambio, score)
-│   │   ├── routes/        # Endpoint POST /api/chat
-│   │   ├── sessions/      # Gerenciamento de sessoes em memoria
-│   │   └── middleware/     # Tratamento de erros
-│   └── data/              # Arquivos CSV (clientes, scores, solicitacoes)
+│   │   ├── agents/               # Definicao dos 4 agentes e handoffs
+│   │   ├── tools/                # Ferramentas dos agentes (CSV, API, calculos)
+│   │   ├── providers/            # Sistema multi-provider
+│   │   │   ├── types.ts          # Interfaces e tipos base
+│   │   │   ├── ProviderFactory.ts # Factory de providers
+│   │   │   ├── tools/            # ToolConverter e registry
+│   │   │   ├── openai-agents/    # Adapter OpenAI Agents
+│   │   │   ├── google-gemini/    # Adapter Google Gemini
+│   │   │   └── openrouter/       # Adapter OpenRouter
+│   │   ├── services/             # Servicos de dados (CSV, cambio, score)
+│   │   ├── routes/               # Endpoints (POST /api/chat, GET /api/providers)
+│   │   ├── sessions/             # Gerenciamento de sessoes com providers
+│   │   └── middleware/           # Tratamento de erros
+│   └── data/                     # Arquivos CSV (clientes, scores, solicitacoes)
 │
 ├── frontend/
 │   └── src/
-│       ├── components/    # Componentes React (Sidebar, Chat, LogPanel)
-│       ├── hooks/         # Hook useChat para logica do chat
-│       ├── api/           # Cliente HTTP para o backend
-│       ├── config/        # Configuracao dos modos de agente
-│       └── styles/        # CSS (layout 3 paineis + visual bancario)
+│       ├── components/
+│       │   ├── Chat/             # ChatContainer, MessageList
+│       │   ├── Sidebar/          # Sidebar com modos de agente
+│       │   ├── Layout/           # Header, LogPanel
+│       │   ├── ProviderSelector/ # Seletor de provider (novo!)
+│       │   └── Documentation/    # Modal de documentacao
+│       ├── hooks/                # useChat (com suporte a provider)
+│       ├── api/                  # chatApi (com parametro provider)
+│       ├── config/               # agentModes
+│       └── styles/               # CSS (layout 3 paineis + visual bancario)
 │
 └── README.md
 ```
@@ -176,11 +358,24 @@ Desafio/
 
 ## Escolhas Tecnicas e Justificativas
 
-### OpenAI Agents SDK
-Escolhido por ter **handoffs nativos** entre agentes - exatamente o que o desafio exige. O SDK gerencia automaticamente a troca de agentes como tool calls do LLM, mantendo o contexto compartilhado por referencia.
+### Sistema Multi-Provider
+Implementado usando **Adapter Pattern** para suportar 3 providers diferentes sem quebrar código existente. Isso permite:
+- **Flexibilidade**: trocar provider dinamicamente
+- **Comparação**: testar OpenAI vs Google vs OpenRouter
+- **Otimização de custo**: usar Gemini gratuito ou modelos baratos
+- **Redundância**: fallback se um provider falhar
 
-### GPT-4o-mini
-Modelo rapido e econômico, suficiente para o caso de uso de atendimento bancario. Responde em poucos segundos e segue bem as instrucoes dos system prompts.
+### OpenAI Agents SDK
+Escolhido como **baseline** por ter **handoffs nativos** entre agentes - exatamente o que o desafio exige. O SDK gerencia automaticamente a troca de agentes como tool calls do LLM, mantendo o contexto compartilhado por referencia.
+
+### Google Gemini
+Adicionado como alternativa **gratuita** ao OpenAI. Usa orquestração manual similar ao OpenRouter, mas com API completamente gratuita (até rate limits). Ideal para desenvolvimento e testes sem custo.
+
+### OpenRouter
+Implementado para dar acesso a **100+ modelos** de diferentes providers (Anthropic Claude, Meta Llama, Mistral, etc.). Permite comparar qualidade e custo entre diferentes LLMs.
+
+### GPT-4o-mini / Gemini 2.0 Flash
+Modelos rápidos e econômicos, suficientes para o caso de uso de atendimento bancario. Respondem em poucos segundos e seguem bem as instruções dos system prompts.
 
 ### CSV com File Locking
 O desafio especifica CSV como formato de dados. Usamos `proper-lockfile` para evitar corrupcao em escritas concorrentes, garantindo integridade dos dados.
@@ -228,8 +423,40 @@ cd Desafio
 cd backend
 npm install
 cp .env.example .env
-# Edite .env e adicione sua OPENAI_API_KEY
+# Edite .env e adicione as chaves de API dos providers
 ```
+
+**Variáveis de Ambiente (`.env`)**:
+
+```bash
+# OpenAI Configuration (obrigatório se usar OpenAI Agents)
+OPENAI_API_KEY=sk-proj-...
+
+# Google Gemini Configuration (GRATUITO!)
+GOOGLE_API_KEY=AIza...
+
+# OpenRouter Configuration (opcional)
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=openai/gpt-4o-mini
+
+# Provider Selection
+PROVIDER_TYPE=google-adk          # openai-agents | google-adk | openrouter
+ALLOW_PROVIDER_SELECTION=true    # Permite seleção via UI
+
+# Server Config
+PORT=3001
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
+```
+
+**Como obter as API Keys:**
+
+- **OpenAI**: https://platform.openai.com/api-keys (pago, ~$0.15/1M tokens)
+- **Google Gemini**: https://aistudio.google.com/app/apikey (**GRATUITO** até rate limits)
+- **OpenRouter**: https://openrouter.ai/keys (pago, múltiplos modelos)
+
+**Nota:** Você pode usar **apenas Google Gemini** (gratuito) para testar o sistema sem custo!
 
 3. Configure o frontend:
 ```bash

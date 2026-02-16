@@ -12,7 +12,18 @@
       "Bash(npm create:*)",
       "Bash(npm run build:*)",
       "Bash(ls:*)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(wc:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Read(//c/Desafio/**)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 5 npm start:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(pkill:*)"
     ]
   }
 }
