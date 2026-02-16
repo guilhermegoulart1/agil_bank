@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { CsvTable } from './CsvTable.js';
 import type { CsvData } from '../../types/index.js';
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 type CsvFilename = 'clientes' | 'score_limite' | 'solicitacoes_aumento_limite';
 
 interface TabConfig {
@@ -41,7 +43,7 @@ export function CsvViewer() {
 
     setLoading((prev) => ({ ...prev, [filename]: true }));
     try {
-      const response = await fetch(`/api/csv/${filename}`);
+      const response = await fetch(`${API_BASE}/csv/${filename}`);
       if (!response.ok) throw new Error('Erro ao carregar CSV');
 
       const csvText = await response.text();
