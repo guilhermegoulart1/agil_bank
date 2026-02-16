@@ -4,6 +4,9 @@ import type { ChatApiResponse } from '../types/index.js';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+console.log('[CONFIG] VITE_API_URL:', import.meta.env.VITE_API_URL || 'NOT SET (usando /api)');
+console.log('[CONFIG] API_BASE:', API_BASE);
+
 // Envia uma mensagem para o backend e retorna a resposta do agente
 // agentId define qual agente usar (null/undefined = triage padrao)
 // provider define qual provider usar (null/undefined = provider padrao do backend)
@@ -15,13 +18,20 @@ export async function enviarMensagem(
   provider?: string,
   model?: string
 ): Promise<ChatApiResponse> {
-  const resposta = await fetch(`${API_BASE}/chat`, {
+  const url = `${API_BASE}/chat`;
+  console.log('[CHAT] Enviando para:', url);
+
+  const resposta = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, sessionId, agentId, provider, model }),
   });
 
+  console.log('[CHAT] Resposta:', resposta.status, resposta.statusText);
+
   if (!resposta.ok) {
+    const errorText = await resposta.text().catch(() => '');
+    console.error('[CHAT] Erro body:', errorText);
     throw new Error(`Erro HTTP ${resposta.status}: ${resposta.statusText}`);
   }
 
