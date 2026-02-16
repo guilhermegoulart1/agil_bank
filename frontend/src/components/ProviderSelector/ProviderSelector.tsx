@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import './ProviderSelector.css';
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 interface ProviderInfo {
   current: string;
   available: string[];
@@ -53,7 +55,7 @@ export function ProviderSelector({
 
   async function fetchProviders() {
     try {
-      const response = await fetch('/api/providers');
+      const response = await fetch(`${API_BASE}/providers`);
       const data = await response.json();
       setProviderInfo(data);
 

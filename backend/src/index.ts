@@ -5,6 +5,17 @@ import { config } from './config/env.js';
 import { chatRouter } from './routes/chatRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
+// Captura erros nao tratados que podem matar o processo
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+});
+process.on('SIGTERM', () => {
+  console.log('[SIGNAL] Recebeu SIGTERM - servidor sendo encerrado');
+});
+
 const app = express();
 
 // === STARTUP LOGS ===
@@ -72,7 +83,7 @@ app.use('/api', chatRouter);
 // Tratamento global de erros
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`[STARTUP] Banco Agil backend rodando na porta ${config.port}`);
+app.listen(config.port, '0.0.0.0', () => {
+  console.log(`[STARTUP] Banco Agil backend rodando em 0.0.0.0:${config.port}`);
   console.log('[STARTUP] Servidor pronto para receber requests!');
 });
