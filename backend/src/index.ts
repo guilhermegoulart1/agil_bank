@@ -20,7 +20,7 @@ console.log('[STARTUP] PROVIDER_TYPE:', config.provider.default);
 // Configuracao de CORS para aceitar requisicoes do frontend
 const allowedOrigins = config.frontendUrl
   .split(',')
-  .map((url: string) => url.trim())
+  .map((url: string) => url.trim().replace(/\/+$/, ''))
   .filter(Boolean);
 
 console.log('[CORS] Origens permitidas:', allowedOrigins);
@@ -55,6 +55,11 @@ if (config.openaiApiKey) {
 } else {
   console.log('[STARTUP] OpenAI key NAO configurada - provider openai-agents indisponivel');
 }
+
+// Rota raiz para health check da Railway
+app.get('/', (_req, res) => {
+  res.json({ status: 'ok', service: 'banco-agil-backend' });
+});
 
 // Health check para monitoramento
 app.get('/api/health', (_req, res) => {
