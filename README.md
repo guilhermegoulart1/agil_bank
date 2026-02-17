@@ -40,15 +40,31 @@ O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colab
 
 ### Stack Tecnologica
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Backend | Node.js + TypeScript + Express |
-| Agentes IA | **Multi-provider** (OpenAI Agents, OpenRouter, Google Gemini) |
-| Modelo LLM | GPT-4o-mini, Gemini 2.0 Flash, ou 100+ modelos via OpenRouter |
-| Frontend | React + TypeScript + Vite |
-| API de Cambio | AwesomeAPI + ExchangeRate-API + CoinGecko (fallback automatico) |
-| Dados | CSV com file locking (`proper-lockfile`) |
-| Deploy | Railway |
+| Camada | Tecnologia | Detalhes |
+|--------|-----------|----------|
+| Backend | Node.js + TypeScript + Express | API REST na porta 3001 |
+| Agentes IA | **Multi-provider** (3 opcoes) | OpenAI Agents SDK, Google Gemini, OpenRouter |
+| Modelo LLM | GPT-4o-mini, Gemini 2.0 Flash, 100+ modelos | Selecionavel via UI, env ou request |
+| Frontend | React 19 + TypeScript + Vite | SPA com 3 paineis (sidebar, chat, logs) |
+| APIs de Cotacao | AwesomeAPI + ExchangeRate-API + CoinGecko | Fallback automatico entre 3 APIs |
+| Dados | CSV com file locking (`proper-lockfile`) | clientes, scores, solicitacoes |
+| Deploy | Railway | Backend + Frontend como servicos separados |
+
+#### AI Providers Disponiveis
+
+| Provider | Framework | Modelo | Custo | Handoffs |
+|----------|-----------|--------|-------|----------|
+| **OpenAI Agents SDK** | `@openai/agents` v0.4.6 | gpt-4o-mini | ~$0.15/1M tokens | Nativos (SDK) |
+| **Google Gemini** | `@google/generative-ai` | gemini-2.0-flash-exp | **GRATUITO** | Orquestrados manualmente |
+| **OpenRouter** | OpenAI SDK + OpenRouter API | 100+ modelos (GPT, Claude, Llama, Mistral, etc.) | Varia por modelo | Orquestrados manualmente |
+
+#### APIs de Cotacao (com Fallback)
+
+| Prioridade | API | Cobertura | Autenticacao | Observacao |
+|------------|-----|-----------|-------------|------------|
+| 1 (primaria) | **AwesomeAPI** | Moedas tradicionais + BTC | Nenhuma | Dados completos (bid/ask/variacao/max/min). Pode retornar HTTP 429 em IPs de datacenter fora do Brasil |
+| 2 (fallback) | **ExchangeRate-API** | Moedas tradicionais | Nenhuma | API global, funciona de qualquer regiao/datacenter |
+| 3 (fallback BTC) | **CoinGecko** | Criptomoedas | Nenhuma | Usada quando as anteriores falham para Bitcoin |
 
 ### Agentes do Sistema
 
@@ -362,59 +378,42 @@ Desafio/
 
 ## Escolhas Tecnicas e Justificativas
 
-### Sistema Multi-Provider
-Implementado usando **Adapter Pattern** para suportar 3 providers diferentes sem quebrar código existente. Isso permite:
-- **Flexibilidade**: trocar provider dinamicamente
-- **Comparação**: testar OpenAI vs Google vs OpenRouter
-- **Otimização de custo**: usar Gemini gratuito ou modelos baratos
-- **Redundância**: fallback se um provider falhar
+### Arquitetura Multi-Provider (Adapter Pattern)
+Implementado usando **Adapter Pattern** para suportar 3 providers de IA diferentes sem quebrar codigo existente. Todos implementam a interface `ProviderAdapter`, permitindo troca dinamica, comparacao A/B e fallback automatico.
 
-### OpenAI Agents SDK
-Escolhido como **baseline** por ter **handoffs nativos** entre agentes - exatamente o que o desafio exige. O SDK gerencia automaticamente a troca de agentes como tool calls do LLM, mantendo o contexto compartilhado por referencia.
+#### Tabela Comparativa dos AI Providers
 
-### Google Gemini
-Adicionado como alternativa **gratuita** ao OpenAI. Usa orquestração manual similar ao OpenRouter, mas com API completamente gratuita (até rate limits). Ideal para desenvolvimento e testes sem custo.
+| Criterio | OpenAI Agents SDK | Google Gemini | OpenRouter |
+|----------|-------------------|---------------|------------|
+| **Framework** | `@openai/agents` v0.4.6 | `@google/generative-ai` | OpenAI SDK + OpenRouter API |
+| **Modelo** | gpt-4o-mini | gemini-2.0-flash-exp | 100+ (GPT, Claude, Llama, Mistral, Qwen) |
+| **Handoffs** | Nativos (SDK gerencia automaticamente) | Orquestrados manualmente via loop | Orquestrados manualmente via loop |
+| **Custo** | ~$0.15/1M tokens | **GRATUITO** (ate rate limits) | Varia por modelo ($-$$$) |
+| **Velocidade** | Rapida (~2-3s) | Muito rapida (~1-2s) | Varia por modelo |
+| **Tool Calling** | Nativo | Suportado | Nativo (formato OpenAI) |
+| **Contexto** | Compartilhado por referencia | Mantido manualmente no adapter | Mantido manualmente no adapter |
+| **Melhor para** | Producao enterprise, estabilidade | Desenvolvimento, testes, custo zero | Experimentacao, comparacao de modelos |
 
-### OpenRouter
-Implementado para dar acesso a **100+ modelos** de diferentes providers (Anthropic Claude, Meta Llama, Mistral, etc.). Permite comparar qualidade e custo entre diferentes LLMs.
+#### Por que cada provider foi escolhido?
 
-### GPT-4o-mini / Gemini 2.0 Flash
-Modelos rápidos e econômicos, suficientes para o caso de uso de atendimento bancario. Respondem em poucos segundos e seguem bem as instruções dos system prompts.
+- **OpenAI Agents SDK** — Escolhido como **baseline** por ter **handoffs nativos** entre agentes, exatamente o que o desafio exige. O SDK gerencia automaticamente a troca de agentes como tool calls do LLM, mantendo o contexto compartilhado por referencia.
+- **Google Gemini** — Alternativa **completamente gratuita**. Usa orquestracao manual, mas com API sem custo e rate limits generosos. Ideal para desenvolvimento e testes.
+- **OpenRouter** — Acesso a **100+ modelos** de diferentes providers (Anthropic Claude, Meta Llama, Mistral, etc.). Permite comparar qualidade e custo entre diferentes LLMs no mesmo sistema.
+
+### APIs de Cotacao (com Fallback Automatico)
+O sistema utiliza **3 APIs de cotacao com fallback automatico** para garantir disponibilidade em producao:
+
+| Prioridade | API | Justificativa |
+|------------|-----|---------------|
+| 1 (primaria) | **AwesomeAPI** | API brasileira gratuita, sem autenticacao. Retorna dados completos (compra, venda, variacao, maxima, minima) |
+| 2 (fallback) | **ExchangeRate-API** | API global gratuita, funciona de qualquer datacenter/regiao. Ativada quando AwesomeAPI retorna HTTP 429 (rate limit em IPs de datacenter fora do Brasil, ex: Railway nos EUA) |
+| 3 (fallback BTC) | **CoinGecko** | API de criptomoedas. Ativada quando as anteriores falham para consultas de Bitcoin |
 
 ### CSV com File Locking
 O desafio especifica CSV como formato de dados. Usamos `proper-lockfile` para evitar corrupcao em escritas concorrentes, garantindo integridade dos dados.
 
-### APIs de Cambio (com Fallback)
-O sistema utiliza **3 APIs de cotacao com fallback automatico** para garantir disponibilidade em producao:
-
-1. **AwesomeAPI** (primaria): API brasileira gratuita, sem autenticacao. Retorna dados completos (compra, venda, variacao, maxima, minima). Pode retornar HTTP 429 (rate limit) em servidores cloud fora do Brasil.
-2. **ExchangeRate-API** (fallback): API global gratuita, sem chave. Funciona de qualquer datacenter/regiao. Retorna taxa de conversao basica.
-3. **CoinGecko** (fallback BTC): API especifica para criptomoedas. Usada quando as anteriores falham para consultas de Bitcoin.
-
-**Por que o fallback?** A AwesomeAPI pode bloquear ou limitar requisicoes de IPs de datacenter (ex: Railway nos EUA retorna HTTP 429). O fallback garante que a funcionalidade de cambio funcione independente da regiao do servidor.
-
 ### React + Vite (sem Streamlit)
-O desafio sugere Streamlit, mas como a stack escolhida e Node.js + React, optamos por uma SPA React pura com Vite para manter consistencia tecnologica e melhor experiencia do usuario. A interface implementada vai alem: possui sidebar com selecao de agentes, painel de logs detalhados e layout de 3 paineis inspirado em Claude/ChatGPT.
-
-## Desafios Enfrentados e Solucoes
-
-### 1. Tipagem do OpenAI Agents SDK
-O SDK usa Zod v4 (nao v3) e o `RunContext` e opcional nos parametros das tools. Resolvido ajustando as assinaturas para aceitar `context?: RunContext<T>`.
-
-### 2. Persistencia do Historico entre Mensagens
-O OpenAI Agents SDK espera o historico completo da conversa a cada chamada. Resolvido armazenando `result.history` na sessao e passando na proxima interacao. Para Google Gemini e OpenRouter, o historico e mantido manualmente no adapter.
-
-### 3. Handoffs Circulares
-Credito → Entrevista → Credito cria referencia circular. No OpenAI Agents SDK, resolvido definindo agentes primeiro com `handoffs: []` e conectando depois em um arquivo central (`agents/index.ts`). Para Gemini e OpenRouter, os handoffs sao orquestrados manualmente via instrucoes no system prompt.
-
-### 3.1. Orquestracao Manual de Handoffs (Gemini e OpenRouter)
-Diferente do OpenAI Agents SDK que possui handoffs nativos, Google Gemini e OpenRouter necessitam de orquestracao manual. Resolvido implementando um loop de agente com deteccao de handoff via resposta do LLM, configuracao de agentes extraida em `agentConfig.ts`, e limite de 15 turnos por execucao para evitar loops infinitos.
-
-### 4. Score Pode Exceder 1000
-A formula pode gerar valores acima de 1000 para rendas muito altas. Resolvido com `Math.max(0, Math.min(1000, score))` no calculador.
-
-### 5. Encerramento Programatico de Conversa
-O desafio exige uma "ferramenta de encerramento para finalizar o loop de execucao". Criamos a tool `encerrar_atendimento` que seta uma flag no contexto (`conversationEnded: true`), bloqueando novas mensagens na sessao. Todos os 4 agentes possuem essa tool e foram instruidos a usa-la ao inves de apenas dizer "tchau".
+O desafio sugere Streamlit, mas como a stack escolhida e Node.js + React, optamos por uma SPA React pura com Vite para manter consistencia tecnologica e melhor experiencia do usuario. A interface implementada vai alem: possui sidebar com selecao de agentes, painel de logs detalhados e layout de 3 paineis.
 
 ## Tutorial de Execucao
 
@@ -462,7 +461,7 @@ ALLOW_PROVIDER_SELECTION=true    # Permite seleção via UI
 
 # Server Config
 PORT=3001
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=https://agilbank-production.up.railway.app
 NODE_ENV=development
 ```
 
@@ -494,7 +493,7 @@ cd frontend
 npm run dev
 ```
 
-3. Acesse `http://localhost:5173` no navegador.
+3. Acesse `https://agilbank-production.up.railway.app` no navegador.
 
 ### Dados para Teste
 
@@ -532,7 +531,7 @@ Conforme `backend/data/score_limite.csv`:
 **Requisito do Desafio:** Agente de Triagem autentica cliente via CPF + data de nascimento contra `clientes.csv` e direciona para o agente apropriado.
 
 **Passos:**
-1. Abra a interface em `http://localhost:5173`
+1. Abra a interface em `https://agilbank-production.up.railway.app`
 2. Selecione **"Atendimento Completo"** na sidebar
 3. Digite: `Olá, preciso de ajuda`
 4. O agente pedira seu **CPF**. Digite: `12345678901`
@@ -833,21 +832,15 @@ Pesos:
 
 Todos os 12 testes acima validam os requisitos do desafio tecnico:
 
-✅ Agente de Triagem: autenticacao + direcionamento
-✅ Agente de Credito: consulta + aumento de limite + registro CSV
-✅ Agente de Entrevista: 5 perguntas + formula de score + atualizacao CSV
-✅ Agente de Cambio: cotacoes em tempo real
-✅ Ferramenta de encerramento em todos os agentes
-✅ Handoffs transparentes (implicitos)
-✅ Tratamento de erros robusto
-✅ Interface completa com logs detalhados
-
-### Deploy na Railway
-
-1. Push para GitHub
-2. No Railway, crie um novo projeto do repositorio
-3. Crie 2 servicos (backend e frontend) apontando para o mesmo repo
-4. Configure:
-   - **Backend**: Root Directory = `backend`, env vars: `FRONTEND_URL` + chaves dos providers desejados (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`), `PROVIDER_TYPE`
-   - **Frontend**: Root Directory = `frontend`, env var: `VITE_API_URL` (URL do backend + `/api`)
-5. Deploy
+| # | Requisito | Status | Detalhes |
+|---|-----------|--------|----------|
+| 1 | Agente de Triagem | ✅ Implementado | Autenticacao via CPF + data nascimento, 3 tentativas, direcionamento automatico |
+| 2 | Agente de Credito | ✅ Implementado | Consulta de limite, aumento com verificacao de score, registro em CSV (pendente → aprovado/rejeitado) |
+| 3 | Agente de Entrevista | ✅ Implementado | 5 perguntas (1 por vez), formula ponderada de score (0-1000), atualizacao automatica em CSV |
+| 4 | Agente de Cambio | ✅ Implementado | Cotacoes em tempo real (9 moedas + BTC), fallback entre 3 APIs |
+| 5 | Ferramenta de encerramento | ✅ Implementado | Tool `encerrar_atendimento` em todos os 4 agentes, bloqueia novas mensagens |
+| 6 | Handoffs transparentes | ✅ Implementado | Transicoes implicitas - cliente nao percebe a troca entre agentes |
+| 7 | Tratamento de erros | ✅ Implementado | Fallback de APIs, validacao de entrada, mensagens amigaveis para erros |
+| 8 | Interface com logs | ✅ Implementado | Painel detalhado com tokens, tool calls, handoffs, timing e contexto |
+| 9 | Multi-provider | ✅ Implementado | 3 AI providers (OpenAI Agents, Google Gemini, OpenRouter) com selecao dinamica |
+| 10 | Dados em CSV | ✅ Implementado | 3 arquivos CSV com file locking (`proper-lockfile`) para escritas concorrentes |
