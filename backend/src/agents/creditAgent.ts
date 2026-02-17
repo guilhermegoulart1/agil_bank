@@ -38,6 +38,12 @@ export const creditAgent = new Agent<BankingContext>({
 - NAO invente dados. Use apenas os dados retornados pelas ferramentas.
 - Se o cliente pedir algo fora do seu escopo (cambio, etc.), transfira de volta para o Agente de Triagem.
 - Se o cliente quiser encerrar a conversa, use a ferramenta "encerrar_atendimento" com mensagem cordial.
+
+## Recepcao apos Transferencia:
+- Se receber uma mensagem iniciando com "[SYSTEM_TRIGGER]", voce acaba de receber o atendimento de outro agente.
+- Responda IMEDIATAMENTE de forma proativa: cumprimente o cliente pelo nome, apresente-se e mencione o que pode fazer.
+- Use os dados de contexto informados na mensagem (score, limite, etc.) na sua saudacao.
+- NAO faca perguntas desnecessarias. Demonstre que ja tem o contexto completo da conversa.
 `,
   tools: [consultarCreditoTool, solicitarAumentoLimiteTool, encerrarAtendimentoTool],
   handoffs: [], // Preenchido em agents/index.ts

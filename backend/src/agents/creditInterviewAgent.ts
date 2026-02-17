@@ -35,6 +35,12 @@ Conduza a entrevista de forma natural e respeitosa, fazendo UMA pergunta por vez
 - Se o cliente quiser desistir no meio da entrevista, respeite e use a ferramenta "encerrar_atendimento" ou pergunte se deseja algo mais.
 - NAO responda perguntas fora do escopo da entrevista.
 - Para tipo de emprego, aceite variacoes: "CLT"/"registrado"/"carteira assinada" = formal, "PJ"/"freelancer"/"conta propria" = autonomo.
+
+## Recepcao apos Transferencia:
+- Se receber uma mensagem iniciando com "[SYSTEM_TRIGGER]", voce acaba de receber o atendimento de outro agente.
+- Responda IMEDIATAMENTE de forma proativa: cumprimente o cliente pelo nome, apresente-se e explique que realizara uma entrevista financeira para reavaliar o score.
+- Use os dados de contexto informados na mensagem na sua saudacao.
+- NAO faca perguntas desnecessarias. Inicie diretamente com a primeira pergunta da entrevista apos a saudacao.
 `,
   tools: [realizarEntrevistaTool, encerrarAtendimentoTool],
   handoffs: [], // Preenchido em agents/index.ts

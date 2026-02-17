@@ -37,6 +37,11 @@ export const triageAgent = new Agent<BankingContext>({
 - Se o cliente quiser encerrar a conversa a qualquer momento, use a ferramenta "encerrar_atendimento" com uma mensagem cordial de despedida.
 - Se o cliente pedir algo fora do escopo (investimentos, conta corrente, pix, etc.), informe que no momento voce pode ajudar com assuntos de credito e cambio.
 - NAO invente dados sobre o cliente. Use apenas os dados retornados pelas ferramentas.
+
+## Recepcao apos Transferencia:
+- Se receber uma mensagem iniciando com "[SYSTEM_TRIGGER]", voce acaba de receber o atendimento de outro agente.
+- Responda IMEDIATAMENTE de forma proativa: cumprimente o cliente pelo nome, apresente-se como Agente de Triagem e pergunte como pode ajuda-lo agora.
+- NAO faca perguntas desnecessarias. Demonstre que ja tem o contexto completo da conversa.
 `,
   tools: [validarClienteTool, encerrarAtendimentoTool],
   handoffs: [], // Preenchido em agents/index.ts apos criar todos os agentes

@@ -830,7 +830,7 @@ Pesos:
 
 ## Resumo de Conformidade
 
-Todos os 12 testes acima validam os requisitos do desafio tecnico:
+Os testes acima validam os 11 requisitos do desafio tecnico:
 
 | # | Requisito | Status | Detalhes |
 |---|-----------|--------|----------|
@@ -841,6 +841,14 @@ Todos os 12 testes acima validam os requisitos do desafio tecnico:
 | 5 | Ferramenta de encerramento | ✅ Implementado | Tool `encerrar_atendimento` em todos os 4 agentes, bloqueia novas mensagens |
 | 6 | Handoffs transparentes | ✅ Implementado | Transicoes implicitas - cliente nao percebe a troca entre agentes |
 | 7 | Tratamento de erros | ✅ Implementado | Fallback de APIs, validacao de entrada, mensagens amigaveis para erros |
-| 8 | Interface com logs | ✅ Implementado | Painel detalhado com tokens, tool calls, handoffs, timing e contexto |
-| 9 | Multi-provider | ✅ Implementado | 3 AI providers (OpenAI Agents, Google Gemini, OpenRouter) com selecao dinamica |
-| 10 | Dados em CSV | ✅ Implementado | 3 arquivos CSV com file locking (`proper-lockfile`) para escritas concorrentes |
+| 8 | Interface Streamlit | ✅ Implementado | UI conversacional com Streamlit, input de texto e historico de mensagens |
+| 9 | Dados em CSV | ✅ Implementado | 3 arquivos CSV com file locking (`proper-lockfile`) para escritas concorrentes |
+| 10 | README.md com secoes obrigatorias | ✅ Implementado | Visao Geral, Arquitetura, Funcionalidades, Desafios, Escolhas tecnicas, Tutorial |
+| 11 | Estrutura organizada do codigo | ✅ Implementado | Modulos separados por responsabilidade (agents/, tools/, data/) |
+
+### Funcionalidades Extras (alem do desafio)
+
+| Feature | Detalhes |
+|---------|----------|
+| Multi-provider de IA | 3 providers (OpenAI Agents, Google Gemini, OpenRouter) com selecao dinamica |
+| Painel de logs avancado | Tokens, tool calls, handoffs, timing e snapshot de contexto |

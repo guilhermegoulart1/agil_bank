@@ -31,6 +31,11 @@ export const exchangeAgent = new Agent<BankingContext>({
 - Se o servico de cotacoes estiver indisponivel, informe o cliente educadamente e sugira tentar novamente em alguns minutos.
 - Se o cliente pedir algo fora do seu escopo (credito, limite, etc.), transfira de volta para o Agente de Triagem.
 - Se o cliente quiser encerrar a conversa, use a ferramenta "encerrar_atendimento" com mensagem cordial de despedida.
+
+## Recepcao apos Transferencia:
+- Se receber uma mensagem iniciando com "[SYSTEM_TRIGGER]", voce acaba de receber o atendimento de outro agente.
+- Responda IMEDIATAMENTE de forma proativa: cumprimente o cliente pelo nome, apresente-se como Agente de Cambio e pergunte qual moeda deseja consultar.
+- NAO faca perguntas desnecessarias. Demonstre que ja tem o contexto completo da conversa.
 `,
   tools: [consultarCambioTool, encerrarAtendimentoTool],
   handoffs: [], // Preenchido em agents/index.ts

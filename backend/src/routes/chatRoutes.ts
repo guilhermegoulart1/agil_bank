@@ -92,7 +92,50 @@ chatRouter.post('/chat', async (req, res, next) => {
       message
     );
 
-    // Return response
+    // Detect handoff: if last log item is a handoff, trigger new agent proactively
+    const lastLog = result.logs[result.logs.length - 1];
+    if (lastLog?.type === 'handoff') {
+      const ctx = session.providerSession.context;
+      const nome = ctx.customerName ?? 'cliente';
+      const score = ctx.currentScore !== undefined ? ` Score atual: ${ctx.currentScore}.` : '';
+      const limite = ctx.currentLimit !== undefined ? ` Limite atual: R$ ${ctx.currentLimit.toFixed(2)}.` : '';
+
+      const trigger =
+        `[SYSTEM_TRIGGER] Voce acabou de receber o atendimento de outro agente.` +
+        ` Cumprimente proativamente ${nome} pelo nome, apresente-se e informe o que pode fazer por ele.` +
+        `${score}${limite}`;
+
+      const proactive = await session.provider.executeMessage(
+        session.providerSession,
+        trigger
+      );
+
+      res.json({
+        sessionId: session.id,
+        messages: [...result.messages, ...proactive.messages],
+        logs: {
+          totalInputTokens: result.usage.inputTokens + proactive.usage.inputTokens,
+          totalOutputTokens: result.usage.outputTokens + proactive.usage.outputTokens,
+          totalRequests: result.usage.requests + proactive.usage.requests,
+          totalTokens: result.usage.totalTokens + proactive.usage.totalTokens,
+          durationMs: result.durationMs + proactive.durationMs,
+          currentAgent: proactive.lastAgent || result.lastAgent || session.providerSession.agentId,
+          contextSnapshot: {
+            authenticated: session.providerSession.context.authenticated,
+            cpf: session.providerSession.context.cpf,
+            customerName: session.providerSession.context.customerName,
+            currentScore: session.providerSession.context.currentScore,
+            currentLimit: session.providerSession.context.currentLimit,
+          },
+          items: [...result.logs, ...proactive.logs],
+          provider: session.provider.getProviderName(),
+          providerInfo: session.provider.getProviderInfo(),
+        },
+      });
+      return;
+    }
+
+    // Return response (no handoff)
     res.json({
       sessionId: session.id,
       messages: result.messages,
