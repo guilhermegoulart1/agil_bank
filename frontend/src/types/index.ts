@@ -45,6 +45,8 @@ export interface LogData {
   };
   items: LogItem[];
   timestamp?: string;
+  provider?: string;
+  providerInfo?: { framework: string; model: string };
 }
 
 // Resposta da API do backend

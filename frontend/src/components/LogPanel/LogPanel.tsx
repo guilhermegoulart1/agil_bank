@@ -9,6 +9,39 @@ interface LogPanelProps {
   onClose: () => void;
 }
 
+// Precos por 1M tokens (USD) - baseado nos precos publicos de cada provider/modelo
+const TOKEN_PRICING: Record<string, { input: number; output: number }> = {
+  // OpenAI
+  'gpt-4o-mini':              { input: 0.15,  output: 0.60 },
+  'gpt-4o':                   { input: 2.50,  output: 10.00 },
+  // Google
+  'gemini-2.0-flash':         { input: 0.10,  output: 0.40 },
+  // Anthropic
+  'claude-3.5-sonnet':        { input: 3.00,  output: 15.00 },
+  'claude-3-haiku':           { input: 0.25,  output: 1.25 },
+  // Meta
+  'llama-3.1-70b-instruct':   { input: 0.52,  output: 0.75 },
+  'llama-3.1-8b-instruct':    { input: 0.06,  output: 0.06 },
+  // Google via OpenRouter
+  'gemini-pro-1.5':           { input: 1.25,  output: 5.00 },
+  // Mistral
+  'mistral-large':            { input: 2.00,  output: 6.00 },
+  // Qwen
+  'qwen-2.5-72b-instruct':   { input: 0.35,  output: 0.40 },
+};
+
+function getModelKey(model?: string): string {
+  if (!model) return '';
+  return model.includes('/') ? model.split('/').pop()! : model;
+}
+
+function calcularCusto(inputTokens: number, outputTokens: number, model?: string): number | null {
+  const key = getModelKey(model);
+  const pricing = TOKEN_PRICING[key];
+  if (!pricing) return null;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
 // Formata JSON de forma compacta para exibicao
 function formatarJson(str: string): string {
   try {
@@ -138,6 +171,25 @@ export function LogPanel({ logs, isOpen, onClose }: LogPanelProps) {
                   <span className="log-token-value">{logData.totalRequests}</span>
                 </div>
               </div>
+
+              {/* Custo estimado */}
+              {(() => {
+                const model = logData.providerInfo?.model;
+                const custo = calcularCusto(logData.totalInputTokens, logData.totalOutputTokens, model);
+                return (
+                  <div className="log-cost">
+                    <span className="log-cost-label">Custo:</span>
+                    {custo !== null ? (
+                      <span className="log-cost-value">${custo.toFixed(6)}</span>
+                    ) : (
+                      <span className="log-cost-na">N/A</span>
+                    )}
+                    {model && (
+                      <span className="log-cost-label">({getModelKey(model)})</span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Agente ativo */}
               <div className="log-agent-info">

@@ -425,6 +425,32 @@
   font-size: 11px;
 }
 
+/* Custo estimado */
+
+.log-cost {
+  padding: 4px 12px;
+  background: #0a1a0a;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.log-cost-label {
+  color: #888;
+}
+
+.log-cost-value {
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.log-cost-na {
+  color: #555;
+  font-style: italic;
+}
+
 /* Contexto do agente */
 
 .log-agent-info {
