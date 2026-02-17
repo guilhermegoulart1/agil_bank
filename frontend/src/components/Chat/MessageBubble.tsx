@@ -1,5 +1,7 @@
 // Bolha individual de mensagem (usuario ou agente)
 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { Message } from '../../types/index.js';
 
 interface MessageBubbleProps {
@@ -17,7 +19,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     <div className={`message-row ${isUser ? 'message-user' : 'message-assistant'}`}>
       {!isUser && <div className="message-avatar">BA</div>}
       <div className={`message-bubble ${isUser ? 'bubble-user' : 'bubble-assistant'}`}>
-        <p className="message-text">{message.content}</p>
+        <div className="message-text">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+        </div>
         <span className="message-time">{hora}</span>
       </div>
     </div>

@@ -46,7 +46,7 @@ O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colab
 | Agentes IA | **Multi-provider** (OpenAI Agents, OpenRouter, Google Gemini) |
 | Modelo LLM | GPT-4o-mini, Gemini 2.0 Flash, ou 100+ modelos via OpenRouter |
 | Frontend | React + TypeScript + Vite |
-| API de Cambio | AwesomeAPI (gratuita, sem chave) |
+| API de Cambio | AwesomeAPI + ExchangeRate-API + CoinGecko (fallback automatico) |
 | Dados | CSV com file locking (`proper-lockfile`) |
 | Deploy | Railway |
 
@@ -101,9 +101,13 @@ O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colab
 - Redireciona para re-analise de credito
 
 #### 4. Agente de Cambio
-- Consulta cotacoes em tempo real via AwesomeAPI
+- Consulta cotacoes em tempo real com **fallback automatico entre 3 APIs**
+- API primaria: AwesomeAPI (dados completos com bid/ask, variacao, max/min)
+- Fallback moedas: ExchangeRate-API (global, funciona de qualquer datacenter)
+- Fallback Bitcoin: CoinGecko (cotacao BTC/BRL com variacao 24h)
 - Suporta: USD, EUR, GBP, ARS, CAD, AUD, JPY, CNY, BTC
-- Apresenta valores de compra, venda e variacao
+- Timeout de 10s por API (tolerante a latencia cross-region)
+- Logs detalhados de qual API foi utilizada em cada consulta
 
 ### Sistema Multi-Provider
 
@@ -380,8 +384,14 @@ Modelos rápidos e econômicos, suficientes para o caso de uso de atendimento ba
 ### CSV com File Locking
 O desafio especifica CSV como formato de dados. Usamos `proper-lockfile` para evitar corrupcao em escritas concorrentes, garantindo integridade dos dados.
 
-### AwesomeAPI
-API brasileira gratuita e sem autenticacao para cotacoes de cambio. Retorna dados em tempo real com suporte nativo a BRL.
+### APIs de Cambio (com Fallback)
+O sistema utiliza **3 APIs de cotacao com fallback automatico** para garantir disponibilidade em producao:
+
+1. **AwesomeAPI** (primaria): API brasileira gratuita, sem autenticacao. Retorna dados completos (compra, venda, variacao, maxima, minima). Pode retornar HTTP 429 (rate limit) em servidores cloud fora do Brasil.
+2. **ExchangeRate-API** (fallback): API global gratuita, sem chave. Funciona de qualquer datacenter/regiao. Retorna taxa de conversao basica.
+3. **CoinGecko** (fallback BTC): API especifica para criptomoedas. Usada quando as anteriores falham para consultas de Bitcoin.
+
+**Por que o fallback?** A AwesomeAPI pode bloquear ou limitar requisicoes de IPs de datacenter (ex: Railway nos EUA retorna HTTP 429). O fallback garante que a funcionalidade de cambio funcione independente da regiao do servidor.
 
 ### React + Vite (sem Streamlit)
 O desafio sugere Streamlit, mas como a stack escolhida e Node.js + React, optamos por uma SPA React pura com Vite para manter consistencia tecnologica e melhor experiencia do usuario. A interface implementada vai alem: possui sidebar com selecao de agentes, painel de logs detalhados e layout de 3 paineis inspirado em Claude/ChatGPT.
@@ -793,10 +803,15 @@ Pesos:
 
 **Requisito do Desafio:** Tratar erros de forma controlada (CSV indisponivel, API offline, entrada invalida).
 
-**Teste A: API de Cambio Indisponivel**
-1. **Simular:** Desconecte a internet ou bloqueie `economia.awesomeapi.com.br`
-2. Autentique e peca cotacao do dolar
-3. ✅ **Resultado Esperado:** Mensagem amigavel informando que o servico esta temporariamente indisponivel
+**Teste A: Fallback de API de Cambio**
+1. Autentique e peca cotacao do dolar
+2. ✅ **Resultado Esperado:** Cotacao retornada com sucesso
+3. **Verificacao nos Logs:** Se a AwesomeAPI falhar (ex: HTTP 429 em producao), os logs mostrarao:
+   - `[ExchangeApi] AwesomeAPI retornou status 429 para USD`
+   - `[ExchangeApi] AwesomeAPI falhou para USD, tentando fallback...`
+   - `[ExchangeApi] ExchangeRate-API: cotacao obtida com sucesso para USD`
+4. **Simular falha total:** Desconecte a internet para testar quando todas as APIs falham
+5. ✅ **Resultado Esperado:** Mensagem amigavel informando que o servico esta temporariamente indisponivel
 
 **Teste B: Entrada Invalida na Entrevista**
 1. Durante a entrevista, quando perguntar renda mensal, digite: `texto` (nao e numero)

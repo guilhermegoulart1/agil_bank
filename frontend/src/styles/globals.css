@@ -281,8 +281,66 @@ body {
 
 .message-text {
   font-size: 13px;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.message-text p {
+  margin: 0 0 8px 0;
+}
+
+.message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.message-text strong {
+  font-weight: 600;
+}
+
+.message-text ul,
+.message-text ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.message-text li {
+  margin-bottom: 2px;
+}
+
+.message-text code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.message-text pre {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 8px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.message-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.message-text table {
+  border-collapse: collapse;
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.message-text th,
+.message-text td {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 4px 8px;
+}
+
+.message-text th {
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 600;
 }
 
 .message-time {
