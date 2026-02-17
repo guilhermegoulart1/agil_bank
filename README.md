@@ -4,7 +4,7 @@ Sistema de atendimento ao cliente para o banco digital **Banco Agil**, construid
 
 ## Visao Geral
 
-O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colaboram para atender o cliente de forma inteligente e contextual. O sistema utiliza o **OpenAI Agents SDK** para orquestrar as transicoes (handoffs) entre agentes de forma transparente - para o cliente, a experiencia e de conversar com um unico assistente.
+O Banco Agil e um sistema multi-agente onde 4 agentes de IA especializados colaboram para atender o cliente de forma inteligente e contextual. O sistema utiliza uma **arquitetura multi-provider** que suporta **OpenAI Agents SDK**, **Google Gemini** e **OpenRouter** (100+ modelos) para orquestrar as transicoes (handoffs) entre agentes de forma transparente - para o cliente, a experiencia e de conversar com um unico assistente. O provider pode ser escolhido dinamicamente via interface, variavel de ambiente ou request.
 
 ### Funcionalidades
 
@@ -402,10 +402,13 @@ O desafio sugere Streamlit, mas como a stack escolhida e Node.js + React, optamo
 O SDK usa Zod v4 (nao v3) e o `RunContext` e opcional nos parametros das tools. Resolvido ajustando as assinaturas para aceitar `context?: RunContext<T>`.
 
 ### 2. Persistencia do Historico entre Mensagens
-O SDK espera o historico completo da conversa a cada chamada. Resolvido armazenando `result.history` na sessao e passando na proxima interacao.
+O OpenAI Agents SDK espera o historico completo da conversa a cada chamada. Resolvido armazenando `result.history` na sessao e passando na proxima interacao. Para Google Gemini e OpenRouter, o historico e mantido manualmente no adapter.
 
 ### 3. Handoffs Circulares
-Credito → Entrevista → Credito cria referencia circular. Resolvido definindo agentes primeiro com `handoffs: []` e conectando depois em um arquivo central (`agents/index.ts`).
+Credito → Entrevista → Credito cria referencia circular. No OpenAI Agents SDK, resolvido definindo agentes primeiro com `handoffs: []` e conectando depois em um arquivo central (`agents/index.ts`). Para Gemini e OpenRouter, os handoffs sao orquestrados manualmente via instrucoes no system prompt.
+
+### 3.1. Orquestracao Manual de Handoffs (Gemini e OpenRouter)
+Diferente do OpenAI Agents SDK que possui handoffs nativos, Google Gemini e OpenRouter necessitam de orquestracao manual. Resolvido implementando um loop de agente com deteccao de handoff via resposta do LLM, configuracao de agentes extraida em `agentConfig.ts`, e limite de 15 turnos por execucao para evitar loops infinitos.
 
 ### 4. Score Pode Exceder 1000
 A formula pode gerar valores acima de 1000 para rendas muito altas. Resolvido com `Math.max(0, Math.min(1000, score))` no calculador.
@@ -418,7 +421,10 @@ O desafio exige uma "ferramenta de encerramento para finalizar o loop de execuca
 ### Pre-requisitos
 
 - Node.js 18+
-- Chave de API da OpenAI
+- Chave de API de **pelo menos um** provider:
+  - **Google Gemini** (GRATUITO): https://aistudio.google.com/app/apikey
+  - **OpenAI**: https://platform.openai.com/api-keys (pago)
+  - **OpenRouter**: https://openrouter.ai/keys (pago, 100+ modelos)
 
 ### Configuracao
 
@@ -842,6 +848,6 @@ Todos os 12 testes acima validam os requisitos do desafio tecnico:
 2. No Railway, crie um novo projeto do repositorio
 3. Crie 2 servicos (backend e frontend) apontando para o mesmo repo
 4. Configure:
-   - **Backend**: Root Directory = `backend`, env vars: `OPENAI_API_KEY`, `FRONTEND_URL`
+   - **Backend**: Root Directory = `backend`, env vars: `FRONTEND_URL` + chaves dos providers desejados (`OPENAI_API_KEY`, `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`), `PROVIDER_TYPE`
    - **Frontend**: Root Directory = `frontend`, env var: `VITE_API_URL` (URL do backend + `/api`)
 5. Deploy
