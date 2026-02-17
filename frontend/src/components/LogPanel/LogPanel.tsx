@@ -99,11 +99,14 @@ function LogItemEntry({ item }: { item: LogItem }) {
     case 'handoff':
       return (
         <div className="log-item log-handoff">
-          <div>
-            <span className="log-item-tag">[HANDOFF]</span>
-            <span className="log-item-content">
-              {item.sourceAgent} &rarr; {item.targetAgent}
-            </span>
+          <div className="log-handoff-banner">
+            <span className="log-handoff-icon">&hArr;</span>
+            <span className="log-handoff-label">TROCA DE AGENTE</span>
+          </div>
+          <div className="log-handoff-detail">
+            <span className="log-handoff-agent log-handoff-source">{item.sourceAgent}</span>
+            <span className="log-handoff-arrow">&rarr;</span>
+            <span className="log-handoff-agent log-handoff-target">{item.targetAgent}</span>
           </div>
         </div>
       );

@@ -524,12 +524,59 @@
 }
 
 .log-item.log-handoff {
-  background: #1a0a1a;
-  border-left: 3px solid #cc44ff;
+  background: linear-gradient(135deg, #1a0a2a 0%, #0a1a2a 100%);
+  border: 1px solid #cc44ff;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
 }
 
-.log-item.log-handoff .log-item-tag {
+.log-handoff-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.log-handoff-icon {
+  font-size: 14px;
   color: #cc44ff;
+}
+
+.log-handoff-label {
+  color: #cc44ff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+
+.log-handoff-detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.log-handoff-agent {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.log-handoff-source {
+  background: rgba(204, 68, 255, 0.15);
+  color: #ee88ff;
+}
+
+.log-handoff-arrow {
+  color: #cc44ff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.log-handoff-target {
+  background: rgba(68, 255, 136, 0.15);
+  color: #44ff88;
 }
 
 .log-item-agent {
