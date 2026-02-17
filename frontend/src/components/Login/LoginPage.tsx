@@ -155,7 +155,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             <button
               type="submit"
               className="login-submit"
-              disabled={isLoading || isLocked || !username || !password}
+              disabled={isLoading || isLocked}
             >
               {isLoading ? 'Entrando...' : 'Entrar'}
             </button>
