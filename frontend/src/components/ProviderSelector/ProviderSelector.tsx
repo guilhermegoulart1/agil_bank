@@ -91,7 +91,7 @@ export function ProviderSelector({
 
   return (
     <div className="provider-selector">
-      <label htmlFor="provider-select">🤖 AI Provider:</label>
+      <label htmlFor="provider-select">AI Provider</label>
       <select
         id="provider-select"
         value={selectedProvider}
@@ -116,7 +116,7 @@ export function ProviderSelector({
 
       {showModelSelector && (
         <>
-          <label htmlFor="model-select">🎯 Modelo:</label>
+          <label htmlFor="model-select">Modelo</label>
           <select
             id="model-select"
             value={selectedModel}
@@ -133,12 +133,11 @@ export function ProviderSelector({
         </>
       )}
 
-      <span className="provider-hint">{getProviderDescription(selectedProvider)}</span>
     </div>
   );
 }
 
-function getProviderLabel(provider: string): string {
+export function getProviderLabel(provider: string): string {
   const labels: Record<string, string> = {
     'openai-agents': 'OpenAI Agents',
     'google-adk': 'Google ADK (Gemini)',
@@ -147,11 +146,3 @@ function getProviderLabel(provider: string): string {
   return labels[provider] || provider;
 }
 
-function getProviderDescription(provider: string): string {
-  const descriptions: Record<string, string> = {
-    'openai-agents': 'Framework oficial OpenAI com handoffs nativos',
-    'google-adk': 'Google ADK com Gemini 2.0 Flash (gratuito e rápido!)',
-    'openrouter': 'Acesso a 100+ modelos (GPT, Claude, Llama, Mistral, etc.)',
-  };
-  return descriptions[provider] || '';
-}

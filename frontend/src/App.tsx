@@ -5,7 +5,6 @@ import { ChatContainer } from './components/Chat/ChatContainer.js';
 import { Sidebar } from './components/Sidebar/Sidebar.js';
 import { LogPanel } from './components/LogPanel/LogPanel.js';
 import { DocumentationView } from './components/Documentation/DocumentationView.js';
-import { ProviderSelector } from './components/ProviderSelector/ProviderSelector.js';
 import { LoginPage } from './components/Login/LoginPage.js';
 import { agentModes } from './config/agentModes.js';
 import { validateToken, logout as apiLogout } from './api/authApi.js';
@@ -121,19 +120,13 @@ function App() {
         currentView={currentView}
         onViewChange={setCurrentView}
         onLogout={handleLogout}
+        selectedProvider={selectedProvider}
+        onProviderChange={handleProviderChange}
+        selectedModel={selectedModel}
+        onModelChange={handleModelChange}
+        providerDisabled={logs.length > 0}
       />
       <div className="chat-panel">
-        {/* Provider Selector */}
-        <div className="provider-selector-container">
-          <ProviderSelector
-            selectedProvider={selectedProvider}
-            onProviderChange={handleProviderChange}
-            selectedModel={selectedModel}
-            onModelChange={handleModelChange}
-            disabled={logs.length > 0}
-          />
-        </div>
-
         {currentView === 'chat' ? (
           <ChatContainer
             key={`${chatKey}-${selectedProvider}-${selectedModel}`}

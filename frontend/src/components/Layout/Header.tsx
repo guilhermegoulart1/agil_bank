@@ -18,7 +18,6 @@ export function Header({ agentMode, onToggleLogs, logPanelOpen }: HeaderProps) {
       <header className="header">
         <div className="header-content">
           <div className="header-brand">
-            <div className="header-logo">BA</div>
             <div className="header-text">
               <div className="header-title-row">
                 <h1 className="header-title">{agentMode.label}</h1>

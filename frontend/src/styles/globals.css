@@ -99,7 +99,7 @@ body {
 }
 
 .header-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.5px;
 }
@@ -197,13 +197,13 @@ body {
 }
 
 .welcome-screen h2 {
-  font-size: 22px;
+  font-size: 20px;
   color: var(--gray-900);
   margin-bottom: 8px;
 }
 
 .welcome-screen p {
-  font-size: 14px;
+  font-size: 13px;
   max-width: 700px;
   line-height: 1.5;
   margin-bottom: 24px;
@@ -280,7 +280,7 @@ body {
 }
 
 .message-text {
-  font-size: 14px;
+  font-size: 13px;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -345,7 +345,7 @@ body {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   color: var(--text);
   padding: 8px 0;
@@ -479,7 +479,7 @@ body {
 }
 
 .modal-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   margin-bottom: 4px;
 }
@@ -760,7 +760,7 @@ body {
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   transition: all 0.2s;
   text-align: left;
@@ -842,7 +842,7 @@ body {
 }
 
 .markdown-container h1 {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--primary);
   margin-bottom: 16px;
@@ -851,7 +851,7 @@ body {
 }
 
 .markdown-container h2 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text);
   margin-top: 32px;
@@ -859,7 +859,7 @@ body {
 }
 
 .markdown-container h3 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text);
   margin-top: 24px;
@@ -995,7 +995,7 @@ body {
   }
 
   .header-title {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .modal-container {
@@ -1008,7 +1008,7 @@ body {
   }
 
   .modal-title {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .modal-body {
