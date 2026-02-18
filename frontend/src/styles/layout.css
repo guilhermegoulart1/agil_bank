@@ -305,6 +305,7 @@
 
 .log-panel {
   width: 420px;
+  height: 100%;
   background: #0d0d0d;
   color: #d4d4d4;
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
