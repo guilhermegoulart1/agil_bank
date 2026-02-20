@@ -841,7 +841,7 @@ Os testes acima validam os 11 requisitos do desafio tecnico:
 | 5 | Ferramenta de encerramento | ✅ Implementado | Tool `encerrar_atendimento` em todos os 4 agentes, bloqueia novas mensagens |
 | 6 | Handoffs transparentes | ✅ Implementado | Transicoes implicitas - cliente nao percebe a troca entre agentes |
 | 7 | Tratamento de erros | ✅ Implementado | Fallback de APIs, validacao de entrada, mensagens amigaveis para erros |
-| 8 | Interface Streamlit | ✅ Implementado | UI conversacional com Streamlit, input de texto e historico de mensagens |
+| 8 | Interface do Usuario (UI) | ✅ Implementado | UI conversacional com React + Vite, input de texto, historico de mensagens, sidebar de agentes e painel de logs |
 | 9 | Dados em CSV | ✅ Implementado | 3 arquivos CSV com file locking (`proper-lockfile`) para escritas concorrentes |
 | 10 | README.md com secoes obrigatorias | ✅ Implementado | Visao Geral, Arquitetura, Funcionalidades, Desafios, Escolhas tecnicas, Tutorial |
 | 11 | Estrutura organizada do codigo | ✅ Implementado | Modulos separados por responsabilidade (agents/, tools/, data/) |
