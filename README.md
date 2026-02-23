@@ -376,6 +376,44 @@ Desafio/
 - [x] Interface de chat profissional com visual bancario (azul escuro + teal)
 - [x] Responsivo (mobile + desktop)
 
+## Desafios Enfrentados e Como Foram Resolvidos
+
+### 1. Handoffs em Providers sem Suporte Nativo (Gemini e OpenRouter)
+
+**Problema:** O OpenAI Agents SDK possui handoffs nativos entre agentes, mas Google Gemini e OpenRouter nao oferecem essa funcionalidade. Sem isso, o sistema multi-provider nao conseguiria orquestrar as transicoes entre agentes.
+
+**Solucao:** Implementacao de um loop de orquestracao manual nos adapters de Gemini e OpenRouter. O LLM recebe instrucoes para gerar um JSON especial quando deseja transferir para outro agente. O adapter detecta esse sinal, troca o agente ativo, atualiza o contexto e reinicia o loop com o novo agente — replicando o comportamento nativo do SDK da OpenAI.
+
+### 2. Agente "Mudo" Apos Handoff (SYSTEM_TRIGGER)
+
+**Problema:** Apos um handoff, o novo agente ficava em silencio aguardando o usuario falar primeiro. Isso quebrava a fluidez da conversa — o cliente nao sabia que havia sido transferido e ficava sem resposta.
+
+**Solucao:** Criacao de um mecanismo de `[SYSTEM_TRIGGER]` no backend. Apos cada handoff detectado, o sistema injeta automaticamente uma mensagem interna que instrui o novo agente a se apresentar proativamente, cumprimentando o cliente pelo nome e informando como pode ajuda-lo. As respostas de ambos os agentes sao concatenadas numa unica resposta ao frontend, garantindo transicao transparente.
+
+### 3. AwesomeAPI Bloqueada em Deploy (HTTP 429)
+
+**Problema:** A API primaria de cotacao de cambio (AwesomeAPI) retorna HTTP 429 (rate limit) quando acessada de IPs de datacenter fora do Brasil — como os servidores do Railway nos EUA. Em ambiente local funcionava perfeitamente, mas em producao falhava.
+
+**Solucao:** Implementacao de um sistema de fallback automatico com 3 APIs em cadeia: AwesomeAPI (primaria, dados completos) → ExchangeRate-API (global, funciona de qualquer regiao) → CoinGecko (especifica para Bitcoin). Cada API tem timeout de 10 segundos. Se uma falha, a proxima assume automaticamente sem intervencao do usuario.
+
+### 4. Concorrencia em Escritas CSV
+
+**Problema:** Requisicoes simultaneas ao backend podiam tentar ler e escrever nos mesmos arquivos CSV ao mesmo tempo, causando corrupcao de dados (linhas sobrepostas, dados parciais).
+
+**Solucao:** Uso da biblioteca `proper-lockfile` para implementar file locking antes de qualquer operacao de escrita. O sistema adquire um lock exclusivo no arquivo, realiza a operacao read-modify-write, e so entao libera o lock. Configurado com 3 retries automaticos em caso de contencao, garantindo integridade dos dados mesmo sob carga.
+
+### 5. Entrevista de Credito: Forcar 1 Pergunta por Vez
+
+**Problema:** O LLM tendia a fazer todas as 5 perguntas da entrevista financeira de uma so vez, ignorando a instrucao de coleta conversacional. Isso prejudicava a experiencia do usuario e a qualidade das respostas.
+
+**Solucao:** Instrucoes explicitas e enfaticas no system prompt do Agente de Entrevista: "Faca UMA pergunta por vez e aguarde a resposta antes de prosseguir para a proxima". A tool `realizar_entrevista` so e chamada quando os 5 dados estiverem coletados individualmente. Essa abordagem de prompt engineering foi mais eficaz do que tentar controlar o fluxo programaticamente.
+
+### 6. Conversao de Tools entre Providers
+
+**Problema:** Cada provider de IA tem um formato diferente para definicao de ferramentas. OpenAI usa JSON Schema, Gemini usa `FunctionDeclaration` com formato proprio, e OpenRouter usa o formato OpenAI via proxy. Manter definicoes duplicadas para cada provider seria fragil e propenso a erros.
+
+**Solucao:** Criacao de um `ToolConverter` centralizado que recebe a definicao canonica das tools (formato OpenAI) e traduz automaticamente para o formato esperado por cada provider. Assim, cada ferramenta e definida uma unica vez e funciona em todos os 3 providers sem duplicacao de codigo.
+
 ## Escolhas Tecnicas e Justificativas
 
 ### Arquitetura Multi-Provider (Adapter Pattern)

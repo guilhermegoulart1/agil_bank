@@ -1,6 +1,7 @@
 // Google Gemini adapter - manual multi-agent orchestration using Gemini API
 import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import type {
   ProviderAdapter,
   ProviderSession,
@@ -9,7 +10,7 @@ import type {
 } from '../types.js';
 import type { BankingContext } from '../../agents/context.js';
 import { toolRegistry, toolsByAgent } from '../tools/registry.js';
-import { agentConfigs } from '../openrouter/agentConfig.js';
+import { agentConfigs } from './agentConfig.js';
 
 export class GoogleGeminiAdapter implements ProviderAdapter {
   private genAI: GoogleGenerativeAI;
@@ -42,6 +43,26 @@ export class GoogleGeminiAdapter implements ProviderAdapter {
     };
   }
 
+  /**
+   * Converts universal tool schemas to Gemini FunctionDeclaration format
+   */
+  private getGeminiFunctionDeclarations(agentId: string) {
+    const agentToolNames = toolsByAgent[agentId] || [];
+    return agentToolNames.map((toolName) => {
+      const tool = toolRegistry[toolName as keyof typeof toolRegistry];
+      // Convert Zod schema to JSON Schema for Gemini
+      const jsonSchema = zodToJsonSchema(tool.schema) as Record<string, any>;
+      // Remove fields that Gemini doesn't accept
+      delete jsonSchema.$schema;
+      delete jsonSchema.additionalProperties;
+      return {
+        name: tool.name,
+        description: tool.description,
+        parameters: jsonSchema,
+      };
+    });
+  }
+
   async executeMessage(
     session: ProviderSession,
     message: string
@@ -68,47 +89,151 @@ export class GoogleGeminiAdapter implements ProviderAdapter {
       const currentAgentId = session.metadata.currentAgentId;
       const agentConfig = agentConfigs[currentAgentId];
 
-      // Get Gemini model with system instructions
+      // Get function declarations for current agent
+      const functionDeclarations = this.getGeminiFunctionDeclarations(currentAgentId);
+
+      // Create Gemini model with system instructions and tools
       const model = this.genAI.getGenerativeModel({
         model: this.model,
         systemInstruction: agentConfig.instructions,
+        tools: functionDeclarations.length > 0
+          ? [{ functionDeclarations }] as any
+          : undefined,
       });
 
-      // Start chat with history
+      // Start chat with history (exclude last entry which we'll send)
       const chat = model.startChat({
-        history: session.history.slice(0, -1), // Exclude last message
+        history: session.history.slice(0, -1),
       });
 
-      // Send message
-      const result = await chat.sendMessage(message);
+      // Send the last history entry
+      const lastEntry = session.history[session.history.length - 1];
+      let result = await chat.sendMessage(lastEntry.parts);
       totalRequests++;
 
-      const response = result.response;
-      const text = response.text();
-
-      // Track usage (Gemini doesn't provide detailed token counts in free tier)
-      totalInputTokens += Math.ceil(message.length / 4); // Rough estimate
-      totalOutputTokens += Math.ceil(text.length / 4); // Rough estimate
-
-      if (text) {
-        messages.push(text);
-        session.history.push({
-          role: 'model',
-          parts: [{ text }],
-        });
-
-        logs.push({
-          type: 'message',
-          agent: agentConfig.name,
-          content: text,
-        });
+      // Track usage
+      if (result.response.usageMetadata) {
+        totalInputTokens += result.response.usageMetadata.promptTokenCount || 0;
+        totalOutputTokens += result.response.usageMetadata.candidatesTokenCount || 0;
       }
 
-      // For simplicity, Gemini adapter doesn't support tool calling in this version
-      // This is a simplified implementation - full tool support would require Gemini function calling
+      // Inner loop for handling function calls (tool use)
+      let processingTools = true;
+      while (processingTools) {
+        const response = result.response;
+        const parts = response.candidates?.[0]?.content?.parts || [];
+        const functionCallParts = parts.filter((p: any) => p.functionCall);
+        const textParts = parts.filter((p: any) => p.text);
 
-      // Check finish reason
-      shouldContinue = false; // Single turn for now
+        if (functionCallParts.length > 0) {
+          // Log any text that comes alongside function calls
+          if (textParts.length > 0) {
+            const text = textParts.map((p: any) => p.text).join('');
+            messages.push(text);
+            logs.push({
+              type: 'message',
+              agent: agentConfig.name,
+              content: text,
+            });
+          }
+
+          // Add model's full response (with function calls) to session history
+          session.history.push({
+            role: 'model',
+            parts: parts,
+          });
+
+          // Execute each function call and collect responses
+          const functionResponses: any[] = [];
+          for (const part of functionCallParts) {
+            const fc = (part as any).functionCall;
+            const toolName: string = fc.name;
+            const toolArgs = fc.args || {};
+
+            logs.push({
+              type: 'tool_call',
+              agent: agentConfig.name,
+              toolName,
+              input: JSON.stringify(toolArgs, null, 2),
+            });
+
+            // Find tool in registry by name
+            const tool = Object.values(toolRegistry).find((t) => t.name === toolName);
+            if (!tool) {
+              throw new Error(`Tool not found: ${toolName}`);
+            }
+
+            // Execute tool with banking context
+            const toolResult = await tool.execute(toolArgs, {
+              context: session.context,
+            });
+
+            logs.push({
+              type: 'tool_output',
+              toolName,
+              output: toolResult,
+            });
+
+            functionResponses.push({
+              functionResponse: {
+                name: toolName,
+                response: { result: toolResult },
+              },
+            });
+          }
+
+          // Add function responses to session history
+          session.history.push({
+            role: 'user',
+            parts: functionResponses,
+          });
+
+          // Send function responses back to model via same chat
+          result = await chat.sendMessage(functionResponses);
+          totalRequests++;
+
+          // Track usage for this round
+          if (result.response.usageMetadata) {
+            totalInputTokens += result.response.usageMetadata.promptTokenCount || 0;
+            totalOutputTokens += result.response.usageMetadata.candidatesTokenCount || 0;
+          }
+
+          // Check for handoff based on context changes
+          const targetAgent = this.detectHandoff(session.context, currentAgentId);
+          if (targetAgent && targetAgent !== currentAgentId) {
+            session.metadata.currentAgentId = targetAgent;
+            logs.push({
+              type: 'handoff',
+              sourceAgent: agentConfig.name,
+              targetAgent: agentConfigs[targetAgent].name,
+            });
+          }
+
+          // Continue inner loop to check if model needs more tool calls
+          continue;
+        }
+
+        // No function calls - process text response
+        if (textParts.length > 0) {
+          const text = textParts.map((p: any) => p.text).join('');
+          messages.push(text);
+          session.history.push({
+            role: 'model',
+            parts: [{ text }],
+          });
+          logs.push({
+            type: 'message',
+            agent: agentConfig.name,
+            content: text,
+          });
+        }
+
+        // Exit inner function-call loop
+        processingTools = false;
+      }
+
+      // Single outer turn for now
+      shouldContinue = false;
 
       // Prevent infinite loops
       if (turnCount >= maxTurns) {
@@ -129,6 +254,18 @@ export class GoogleGeminiAdapter implements ProviderAdapter {
       lastAgent: agentConfigs[session.metadata.currentAgentId].name,
       logs,
     };
+  }
+
+  /**
+   * Detects when to handoff to another agent based on context changes
+   */
+  private detectHandoff(context: BankingContext, currentAgent: string): string | null {
+    if (currentAgent === 'triage' || currentAgent === 'full') {
+      if (context.authenticated) {
+        return null;
+      }
+    }
+    return null;
   }
 
   getProviderName(): string {
