@@ -1,7 +1,6 @@
 // Google Gemini adapter - manual multi-agent orchestration using Gemini API
 import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import type {
   ProviderAdapter,
   ProviderSession,
@@ -50,8 +49,8 @@ export class GoogleGeminiAdapter implements ProviderAdapter {
     const agentToolNames = toolsByAgent[agentId] || [];
     return agentToolNames.map((toolName) => {
       const tool = toolRegistry[toolName as keyof typeof toolRegistry];
-      // Convert Zod schema to JSON Schema for Gemini
-      const jsonSchema = zodToJsonSchema(tool.schema) as Record<string, any>;
+      // tool.schema is already JSON Schema (converted by @openai/agents)
+      const jsonSchema = { ...tool.schema } as Record<string, any>;
       // Remove fields that Gemini doesn't accept
       delete jsonSchema.$schema;
       delete jsonSchema.additionalProperties;
